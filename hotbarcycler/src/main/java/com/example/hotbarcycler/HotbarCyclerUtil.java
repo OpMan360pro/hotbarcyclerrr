@@ -2,6 +2,7 @@ package com.example.hotbarcycler;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 
@@ -82,5 +83,33 @@ public class HotbarCyclerUtil {
         }
 
         return -1;
+    }
+
+    public static ItemStack getVisualStack(Slot slot) {
+        if (slot == null) return ItemStack.EMPTY;
+        HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+        if (cfg == null || !cfg.seamlessHotbar) {
+            return slot.getStack();
+        }
+        int page = HotbarCyclerClient.getCurrentPage();
+        if (page == 0) {
+            return slot.getStack();
+        }
+        if (!(slot.inventory instanceof PlayerInventory inv)) {
+            return slot.getStack();
+        }
+        int row = getSlotRow(slot);
+        if (row != 0 && row != page) {
+            return slot.getStack();
+        }
+        int col = slot.getIndex() % 9;
+        if (col < 0 || col > 8) {
+            return slot.getStack();
+        }
+        int targetIdx = (row == 0) ? (page * 9 + col) : col;
+        if (targetIdx >= 0 && targetIdx < inv.getMainStacks().size()) {
+            return inv.getMainStacks().get(targetIdx);
+        }
+        return slot.getStack();
     }
 }

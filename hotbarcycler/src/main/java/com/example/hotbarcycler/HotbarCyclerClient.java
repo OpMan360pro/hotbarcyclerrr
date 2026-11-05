@@ -31,6 +31,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
     // ── Runtime state ─────────────────────────────────────────────────────────
     private static int currentPage = 0;
+    private static boolean isRowSwapped = false;
     private static boolean wasInScreen = false;
     private static boolean wasNextDown = false;
     private static boolean wasPrevDown = false;
@@ -41,6 +42,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
     // ── Getters ───────────────────────────────────────────────────────────────
     public static int     getCurrentPage()             { return currentPage; }
+    public static boolean isRowSwapped()               { return isRowSwapped; }
     public static boolean isColumnPreviewVisible()     { return columnPreviewVisible; }
     public static boolean isRowIndicatorVisible()      { return rowIndicatorVisible; }
     public static boolean isInventoryOverlayVisible()  { return inventoryOverlayVisible; }
@@ -59,6 +61,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
         if (client.player != null && client.currentScreen == null) {
             if (oldPage != 0) swapLocalRowWithHotbar(client.player, oldPage);
             if (currentPage != 0) swapLocalRowWithHotbar(client.player, currentPage);
+            isRowSwapped = (currentPage != 0);
             ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
         }
     }
@@ -71,6 +74,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
         if (client.player != null && client.currentScreen == null) {
             if (oldPage != 0) swapLocalRowWithHotbar(client.player, oldPage);
             if (currentPage != 0) swapLocalRowWithHotbar(client.player, currentPage);
+            isRowSwapped = (currentPage != 0);
             ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
         }
     }
@@ -114,10 +118,11 @@ public class HotbarCyclerClient implements ClientModInitializer {
         toggleInventoryOverlayKey = reg("key.hotbarcycler.toggle_inventory_overlay");
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            currentPage            = 0;
-            wasInScreen            = false;
-            wasNextDown            = false;
-            wasPrevDown            = false;
+            currentPage             = 0;
+            isRowSwapped            = false;
+            wasInScreen             = false;
+            wasNextDown             = false;
+            wasPrevDown             = false;
             inventoryOverlayVisible = false;
             columnPreviewVisible = HotbarCyclerConfig.get().showColumnPreview;
             rowIndicatorVisible  = HotbarCyclerConfig.get().showRowIndicator;
@@ -130,13 +135,15 @@ public class HotbarCyclerClient implements ClientModInitializer {
             // re-apply active hotbar row outside menus.
             boolean inScreen = (client.currentScreen != null);
             if (inScreen && !wasInScreen) {
-                if (currentPage != 0) {
+                if (currentPage != 0 && isRowSwapped) {
                     swapLocalRowWithHotbar(client.player, currentPage);
+                    isRowSwapped = false;
                     ClientPlayNetworking.send(new CycleHotbarPayload(0));
                 }
             } else if (!inScreen && wasInScreen) {
-                if (currentPage != 0) {
+                if (currentPage != 0 && !isRowSwapped) {
                     swapLocalRowWithHotbar(client.player, currentPage);
+                    isRowSwapped = true;
                     ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
                 }
             }

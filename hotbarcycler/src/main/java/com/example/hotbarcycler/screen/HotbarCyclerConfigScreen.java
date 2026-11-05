@@ -43,14 +43,14 @@ public class HotbarCyclerConfigScreen extends Screen {
     private ButtonWidget    colShowBtn, colEmptyBtn;
     private TextFieldWidget colOffX, colOffY, colSlotW, colSlotH, colAlpha;
     // Row Indicator
-    private ButtonWidget    rowShowBtn;
+    private ButtonWidget    rowShowBtn, seamlessHotbarBtn;
     private TextFieldWidget rowOffX, rowOffY, rowSqW, rowSqH;
     // Inventory Overlay
     private TextFieldWidget invOffX, invOffY, invSlotSize, invSlotsPerRow,
                             invHotbarPad, invAlpha;
 
     // ── Working booleans ──────────────────────────────────────────────────────
-    private boolean wColShow, wColEmpty, wRowShow;
+    private boolean wColShow, wColEmpty, wRowShow, wSeamlessHotbar;
 
     // ── Post-render text entries (drawn AFTER super.render so they show on top)
     private record LabelEntry(int cx, int y, String text, int color, boolean shadow) {}
@@ -75,7 +75,7 @@ public class HotbarCyclerConfigScreen extends Screen {
         // Null-out all widget references so saveAndClose() guards work correctly
         colShowBtn = null; colEmptyBtn = null;
         colOffX = null; colOffY = null; colSlotW = null; colSlotH = null; colAlpha = null;
-        rowShowBtn = null;
+        rowShowBtn = null; seamlessHotbarBtn = null;
         rowOffX = null; rowOffY = null; rowSqW = null; rowSqH = null;
         invOffX = null; invOffY = null; invSlotSize = null; invSlotsPerRow = null;
         invHotbarPad = null; invAlpha = null;
@@ -84,6 +84,7 @@ public class HotbarCyclerConfigScreen extends Screen {
         wColShow  = cfg.showColumnPreview;
         wColEmpty = cfg.showEmptyColumns;
         wRowShow  = cfg.showRowIndicator;
+        wSeamlessHotbar = cfg.seamlessHotbar;
 
         int cx = width / 2;
 
@@ -169,11 +170,16 @@ public class HotbarCyclerConfigScreen extends Screen {
 
         sectionLabel("-- Visibility --", cx, y); y += 13;
 
-        rowShowBtn = addToggle(cx, y, "Show Row Indicator", wRowShow, b -> {
+        rowShowBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Show Row Indicator", wRowShow), b -> {
             wRowShow = !wRowShow; b.setMessage(toggleMsg("Show Row Indicator", wRowShow));
-        });
-        smallLabel("Toggles the 4 small squares to the left of the hotbar.", cx, y + BTN_H + 2);
-        smallLabel("The bright white square shows which inventory row is currently active.", cx, y + BTN_H + 11);
+        }).dimensions(cx - BTN_W - 4, y, BTN_W, BTN_H).build());
+
+        seamlessHotbarBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Seamless Hotbar", wSeamlessHotbar), b -> {
+            wSeamlessHotbar = !wSeamlessHotbar; b.setMessage(toggleMsg("Seamless Hotbar", wSeamlessHotbar));
+        }).dimensions(cx + 4, y, BTN_W, BTN_H).build());
+
+        smallLabel("Left: 4 squares by hotbar.  Right: keeps active row visible in menu hotbar.", cx, y + BTN_H + 2);
+        smallLabel("Seamless is purely visual and does not alter server-side item movements.", cx, y + BTN_H + 11);
         y += BTN_H + 22;
 
         sectionLabel("-- Position --", cx, y); y += 13;
@@ -276,8 +282,9 @@ public class HotbarCyclerConfigScreen extends Screen {
         if (colSlotH    != null) cfg.columnPreviewSlotHeight = Math.max(16, parseInt(colSlotH, 20));
         if (colAlpha    != null) cfg.columnPreviewAlpha      = clamp(parseInt(colAlpha, 204), 0, 255);
 
-        if (rowShowBtn  != null) cfg.showRowIndicator        = wRowShow;
-        if (rowOffX     != null) cfg.rowIndicatorOffsetX     = parseInt(rowOffX,    0);
+        if (rowShowBtn        != null) cfg.showRowIndicator        = wRowShow;
+        if (seamlessHotbarBtn != null) cfg.seamlessHotbar          = wSeamlessHotbar;
+        if (rowOffX           != null) cfg.rowIndicatorOffsetX     = parseInt(rowOffX,    0);
         if (rowOffY     != null) cfg.rowIndicatorOffsetY     = parseInt(rowOffY,    0);
         if (rowSqW      != null) cfg.rowIndicatorSquareW     = Math.max(1, parseInt(rowSqW, 5));
         if (rowSqH      != null) cfg.rowIndicatorSquareH     = Math.max(1, parseInt(rowSqH, 5));

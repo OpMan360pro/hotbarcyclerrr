@@ -2,11 +2,13 @@
   "required": true,
   "package": "com.example.hotbarcycler.mixin",
   "compatibilityLevel": "JAVA_21",
+  "refmap": "hotbarcycler-refmap.json",
   "client": [
     "InGameHudMixin",
     "HandledScreenMixin",
     "InventoryScreenMixin",
-    "SlotAccessor"
+    "SlotAccessor",
+    "PlayerInventoryMixin"
   ],
   "injectors": {
     "defaultRequire": 1

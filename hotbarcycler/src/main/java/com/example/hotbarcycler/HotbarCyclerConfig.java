@@ -29,6 +29,7 @@ public class HotbarCyclerConfig {
 
     // ── Row Indicator ─────────────────────────────────────────────────────────
     public boolean showRowIndicator        = true;
+    public boolean seamlessHotbar          = false;
     public int     rowIndicatorOffsetX     = 0;
     public int     rowIndicatorOffsetY     = 0;
     public int     rowIndicatorSquareW     = 8;
