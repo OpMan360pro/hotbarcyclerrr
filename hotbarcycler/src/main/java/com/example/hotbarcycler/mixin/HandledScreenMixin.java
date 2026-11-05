@@ -15,16 +15,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.lang.reflect.Field;
-
 @Mixin(HandledScreen.class)
 public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen {
 
     @Shadow @Final protected T handler;
     @Shadow protected int x;
     @Shadow protected int y;
-
-    @Unique private static Field hotbarcycler$creativeSlotField = null;
 
     protected HandledScreenMixin() {
         super(null);
@@ -59,7 +55,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             }
         }
 
-        if (found) {
+        if (found && maxX > minX && maxY > minY) {
             int boxX = minX - 1;
             int boxY = minY - 1;
             int boxW = (maxX - minX) + 2;
@@ -76,36 +72,24 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     }
 
     @Unique
-    private static Slot hotbarcycler$getRealSlot(Slot slot) {
-        if (slot.getClass().getName().contains("CreativeSlot")) {
-            try {
-                if (hotbarcycler$creativeSlotField == null) {
-                    for (Field f : slot.getClass().getDeclaredFields()) {
-                        if (Slot.class.isAssignableFrom(f.getType())) {
-                            hotbarcycler$creativeSlotField = f;
-                            hotbarcycler$creativeSlotField.setAccessible(true);
-                            break;
-                        }
-                    }
-                }
-                if (hotbarcycler$creativeSlotField != null) {
-                    Object wrapped = hotbarcycler$creativeSlotField.get(slot);
-                    if (wrapped instanceof Slot realSlot) return realSlot;
-                }
-            } catch (Exception ignored) {}
-        }
-        return slot;
-    }
-
-    @Unique
     private static int hotbarcycler$getSlotRow(Slot slot) {
-        Slot real = hotbarcycler$getRealSlot(slot);
-        if (!(real.inventory instanceof PlayerInventory)) return -1;
-        int idx = real.getIndex();
-        if (idx >= 0 && idx < 9) return 0; // hotbar
+        if (!(slot.inventory instanceof PlayerInventory)) return -1;
+        int idx = slot.getIndex();
+
+        // Rows 1, 2, 3 (consistent across Survival, Creative, and Containers)
         if (idx >= 9 && idx < 18) return 1;
         if (idx >= 18 && idx < 27) return 2;
         if (idx >= 27 && idx < 36) return 3;
+
+        // Hotbar (Row 0):
+        // In Survival & Containers: idx 0..8, slot.y >= 100
+        // In Creative inventory: idx 36..44, slot.y >= 100
+        // Armor (idx 36..39 in Survival, idx 5..8 in Creative) has slot.y < 80, so it is strictly excluded.
+        if (slot.y >= 100) {
+            if (idx >= 0 && idx < 9) return 0;
+            if (idx >= 36 && idx < 45) return 0;
+        }
+
         return -1;
     }
 }
