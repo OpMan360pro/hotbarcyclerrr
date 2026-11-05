@@ -56,20 +56,21 @@ public abstract class InGameHudMixin {
             target = "Lnet/minecraft/entity/player/PlayerInventory;getStack(I)Lnet/minecraft/item/ItemStack;"
         )
     )
-    private ItemStack hotbarcycler$redirectHotbarSlot(PlayerInventory inv, int slot) {
+    private ItemStack hotbarcycler$redirectRenderHotbarGetStack(PlayerInventory inventory, int slot) {
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
         if (cfg != null && cfg.seamlessHotbar && slot >= 0 && slot < 9) {
-            int page = HotbarCyclerClient.getCurrentPage();
-            if (page > 0 && page < 4) {
-                if (!HotbarCyclerClient.isRowSwapped()) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.currentScreen != null) {
+                int page = HotbarCyclerClient.getCurrentPage();
+                if (page > 0 && page < 4) {
                     int targetIdx = page * 9 + slot;
-                    if (targetIdx >= 0 && targetIdx < inv.getMainStacks().size()) {
-                        return inv.getMainStacks().get(targetIdx);
+                    if (targetIdx >= 0 && targetIdx < inventory.getMainStacks().size()) {
+                        return inventory.getMainStacks().get(targetIdx);
                     }
                 }
             }
         }
-        return inv.getStack(slot);
+        return inventory.getStack(slot);
     }
 
     @Inject(method = "renderHotbar", at = @At("TAIL"))
