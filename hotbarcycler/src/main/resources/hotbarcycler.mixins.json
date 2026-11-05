@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.example.hotbarcycler.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "InGameHudMixin",
+    "HandledScreenMixin",
+    "SlotAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
