@@ -5,6 +5,7 @@
   "client": [
     "InGameHudMixin",
     "HandledScreenMixin",
+    "InventoryScreenMixin",
     "SlotAccessor"
   ],
   "injectors": {
