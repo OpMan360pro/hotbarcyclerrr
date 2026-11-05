@@ -52,26 +52,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         hotbarcycler$applySlotShift();
     }
 
-    @Inject(method = "drawSlot", at = @At("HEAD"))
-    private void hotbarcycler$onDrawSlot(DrawContext context, Slot slot, CallbackInfo ci) {
-        if (hotbarcycler$isHotbarSlot(slot)) {
-            int x = slot.x - 1;
-            int y = slot.y - 1;
-
-            // 1. Draw 18x18 vanilla slot background texture at the new (glued) position
-            context.fill(x + 1, y + 1, x + 17, y + 17, 0xFF8B8B8B); // slot interior
-            context.fill(x,     y,     x + 18, y + 1,  0xFF373737); // top dark bevel
-            context.fill(x,     y,     x + 1,  y + 18, 0xFF373737); // left dark bevel
-            context.fill(x + 17, y + 1, x + 18, y + 18, 0xFFFFFFFF); // right highlight
-            context.fill(x + 1,  y + 17, x + 18, y + 18, 0xFFFFFFFF); // bottom highlight
-
-            // 2. Cover the 4px gap area below with vanilla container grey background
-            context.fill(x, y + 18, x + 18, y + 22, 0xFFC6C6C6);
-            // 3. Container bottom edge
-            context.fill(x, y + 22, x + 18, y + 23, 0xFF555555);
-        }
-    }
-
     @Inject(method = "render", at = @At("TAIL"))
     private void hotbarcycler$onRenderTail(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         hotbarcycler$drawActiveRowHighlightAndIndicator(context);
@@ -138,24 +118,38 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
         Slot[] activeRowSlots = new Slot[9];
         Slot[] rowAnchors = new Slot[4];
+        Slot[] hotbarSlots = new Slot[9];
 
         for (Slot slot : this.handler.slots) {
             int row = hotbarcycler$getSlotRow(slot);
-            if (row == page) {
-                int col = hotbarcycler$getSlotColumn(slot);
-                if (col >= 0 && col < 9) {
-                    activeRowSlots[col] = slot;
-                }
+            int col = hotbarcycler$getSlotColumn(slot);
+            if (row == page && col >= 0 && col < 9) {
+                activeRowSlots[col] = slot;
+            }
+            if (row == 0 && col >= 0 && col < 9) {
+                hotbarSlots[col] = slot;
             }
             if (row >= 0 && row < 4 && rowAnchors[row] == null) {
                 rowAnchors[row] = slot;
             }
         }
 
+        // Cover the 4px gap below hotbar row so the background texture appears seamless
+        if (hotbarSlots[0] != null && hotbarSlots[8] != null) {
+            int hStartX = hotbarSlots[0].x - 1;
+            int hEndX   = hotbarSlots[8].x + 17;
+            int hBottom = hotbarSlots[0].y + 17;
+
+            // Fill the empty 4px gap with the container background color
+            context.fill(hStartX, hBottom,     hEndX, hBottom + 4, 0xFFC6C6C6);
+            // Container bottom edge
+            context.fill(hStartX, hBottom + 4, hEndX, hBottom + 5, 0xFF555555);
+        }
+
         Slot anchor = rowAnchors[0] != null ? rowAnchors[0] : rowAnchors[1];
         if (anchor == null) return;
 
-        // Draw active row highlight frame
+        // Draw active row highlight frame around the 9 slots
         if (activeRowSlots[0] != null && activeRowSlots[8] != null) {
             int minX = activeRowSlots[0].x;
             int maxX = activeRowSlots[8].x;
