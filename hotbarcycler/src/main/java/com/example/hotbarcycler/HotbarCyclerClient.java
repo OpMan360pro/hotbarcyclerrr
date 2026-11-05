@@ -12,6 +12,7 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
+import org.lwjgl.glfw.GLFW;
 
 public class HotbarCyclerClient implements ClientModInitializer {
 
@@ -31,6 +32,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
     // ── Runtime state ─────────────────────────────────────────────────────────
     private static int currentPage = 0;
     private static boolean wasInScreen = false;
+    private static boolean wasNextDown = false;
+    private static boolean wasPrevDown = false;
 
     private static boolean columnPreviewVisible = true;
     private static boolean rowIndicatorVisible = true;
@@ -56,8 +59,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
         if (client.player != null && client.currentScreen == null) {
             if (oldPage != 0) swapLocalRowWithHotbar(client.player, oldPage);
             if (currentPage != 0) swapLocalRowWithHotbar(client.player, currentPage);
+            ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
         }
-        ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
     }
 
     public static void setHotbarRow(int targetRow) {
@@ -83,6 +86,18 @@ public class HotbarCyclerClient implements ClientModInitializer {
         }
     }
 
+    private static boolean isKeyBindingDown(MinecraftClient client, KeyBinding keyBinding) {
+        if (keyBinding == null || keyBinding.isUnbound() || client.getWindow() == null) return false;
+        InputUtil.Key boundKey = KeyBindingHelper.getBoundKeyOf(keyBinding);
+        long handle = client.getWindow().getHandle();
+        if (boundKey.getCategory() == InputUtil.Type.KEYSYM) {
+            return GLFW.glfwGetKey(handle, boundKey.getCode()) == GLFW.GLFW_PRESS;
+        } else if (boundKey.getCategory() == InputUtil.Type.MOUSE) {
+            return GLFW.glfwGetMouseButton(handle, boundKey.getCode()) == GLFW.GLFW_PRESS;
+        }
+        return false;
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────
 
     @Override
@@ -101,6 +116,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             currentPage            = 0;
             wasInScreen            = false;
+            wasNextDown            = false;
+            wasPrevDown            = false;
             inventoryOverlayVisible = false;
             columnPreviewVisible = HotbarCyclerConfig.get().showColumnPreview;
             rowIndicatorVisible  = HotbarCyclerConfig.get().showRowIndicator;
@@ -125,6 +142,26 @@ public class HotbarCyclerClient implements ClientModInitializer {
             }
             wasInScreen = inScreen;
 
+            // Process keybinds both in-screen (via low-level GLFW polling) and outside screen
+            if (inScreen) {
+                boolean nextDown = isKeyBindingDown(client, nextHotbarKey);
+                if (nextDown && !wasNextDown) cycleHotbar(true);
+                wasNextDown = nextDown;
+
+                boolean prevDown = isKeyBindingDown(client, prevHotbarKey);
+                if (prevDown && !wasPrevDown) cycleHotbar(false);
+                wasPrevDown = prevDown;
+            } else {
+                wasNextDown = false;
+                wasPrevDown = false;
+                while (nextHotbarKey.wasPressed()) {
+                    cycleHotbar(true);
+                }
+                while (prevHotbarKey.wasPressed()) {
+                    cycleHotbar(false);
+                }
+            }
+
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new HotbarCyclerConfigScreen(client.currentScreen));
             }
@@ -136,13 +173,6 @@ public class HotbarCyclerClient implements ClientModInitializer {
             }
             while (toggleInventoryOverlayKey.wasPressed()) {
                 inventoryOverlayVisible = !inventoryOverlayVisible;
-            }
-
-            while (nextHotbarKey.wasPressed()) {
-                cycleHotbar(true);
-            }
-            while (prevHotbarKey.wasPressed()) {
-                cycleHotbar(false);
             }
 
             int sel = client.player.getInventory().getSelectedSlot();

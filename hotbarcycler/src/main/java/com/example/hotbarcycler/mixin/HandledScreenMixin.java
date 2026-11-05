@@ -65,17 +65,18 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             int boxW = (maxX - minX) + 2;
             int boxH = (maxY - minY) + 2;
 
-            context.fill(boxX,             boxY,             boxX + boxW,     boxY + 1,        0xFFFFFFFF);
-            context.fill(boxX,             boxY + boxH - 1,  boxX + boxW,     boxY + boxH,     0xFFFFFFFF);
-            context.fill(boxX,             boxY,             boxX + 1,        boxY + boxH,     0xFFFFFFFF);
-            context.fill(boxX + boxW - 1,  boxY,             boxX + boxW,     boxY + boxH,     0xFFFFFFFF);
-            context.fill(boxX + 1,         boxY + 1,         boxX + boxW - 1, boxY + boxH - 1, 0x1AFFFFFF);
+            // 2px solid white border around active row
+            context.fill(boxX - 1,        boxY - 1,        boxX + boxW + 1, boxY + 1,        0xFFFFFFFF);
+            context.fill(boxX - 1,        boxY + boxH - 1, boxX + boxW + 1, boxY + boxH + 1, 0xFFFFFFFF);
+            context.fill(boxX - 1,        boxY - 1,        boxX + 1,        boxY + boxH + 1, 0xFFFFFFFF);
+            context.fill(boxX + boxW - 1, boxY - 1,        boxX + boxW + 1, boxY + boxH + 1, 0xFFFFFFFF);
+            // Clearly visible translucent tint
+            context.fill(boxX + 1,        boxY + 1,        boxX + boxW - 1, boxY + boxH - 1, 0x35FFFFFF);
         }
     }
 
     @Unique
     private static Slot hotbarcycler$getRealSlot(Slot slot) {
-        if (slot.inventory instanceof PlayerInventory) return slot;
         if (slot.getClass().getName().contains("CreativeSlot")) {
             try {
                 if (hotbarcycler$creativeSlotField == null) {
