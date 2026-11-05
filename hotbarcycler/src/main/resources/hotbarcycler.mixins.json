@@ -1,7 +1,6 @@
 {
   "required": true,
   "package": "com.example.hotbarcycler.mixin",
-  "refmap": "hotbarcycler-refmap.json",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "InGameHudMixin",

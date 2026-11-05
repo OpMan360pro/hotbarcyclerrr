@@ -26,6 +26,10 @@ import java.util.Set;
 public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen {
 
     @Shadow @Final protected T handler;
+    @Shadow protected int x;
+    @Shadow protected int y;
+    @Shadow protected int backgroundWidth;
+    @Shadow protected int backgroundHeight;
 
     @Unique private final Map<Slot, Integer> hotbarcycler$originalY = new HashMap<>();
     @Unique private final Set<Slot> hotbarcycler$shiftedSlots = new HashSet<>();
@@ -53,11 +57,12 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "render", at = @At("TAIL"))
     private void hotbarcycler$onRenderTail(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        hotbarcycler$drawActiveRowHighlightAndIndicator(context);
+        hotbarcycler$drawActiveRowHighlightAndIndicator(context, mouseX, mouseY);
     }
 
     @Unique
     private void hotbarcycler$applySlotShift() {
+        hotbarcycler$shiftedSlots.retainAll(this.handler.slots);
         for (Slot slot : this.handler.slots) {
             if (hotbarcycler$isHotbarSlot(slot) && !hotbarcycler$shiftedSlots.contains(slot)) {
                 hotbarcycler$originalY.put(slot, slot.y);
@@ -77,7 +82,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     }
 
     @Unique
-    private void hotbarcycler$drawActiveRowHighlightAndIndicator(DrawContext context) {
+    private void hotbarcycler$drawActiveRowHighlightAndIndicator(DrawContext context, int mouseX, int mouseY) {
         int page = HotbarCyclerClient.getCurrentPage();
 
         Slot[] activeRowSlots = new Slot[9];
@@ -85,6 +90,8 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         Slot[] hotbarSlots = new Slot[9];
 
         for (Slot slot : this.handler.slots) {
+            if (!slot.isEnabled() || slot.x < -100 || slot.y < -100) continue;
+
             int row = hotbarcycler$getSlotRow(slot);
             int col = hotbarcycler$getSlotColumn(slot);
             if (row == page && col >= 0 && col < 9) {
@@ -98,16 +105,45 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             }
         }
 
-        // Cover the 4px gap below hotbar row so the background texture appears seamless
+        // Seamless hotbar attachment: cover old slot gap and draw clean shifted slot boxes
         if (hotbarSlots[0] != null && hotbarSlots[8] != null) {
-            int hStartX = hotbarSlots[0].x - 1;
-            int hEndX   = hotbarSlots[8].x + 17;
-            int hBottom = hotbarSlots[0].y + 17;
+            int hStartX = this.x + hotbarSlots[0].x - 1;
+            int hEndX   = this.x + hotbarSlots[8].x + 17;
+            int hY      = this.y + hotbarSlots[0].y;
 
-            // Fill the empty 4px gap with the container background color
-            context.fill(hStartX, hBottom,     hEndX, hBottom + 4, 0xFFC6C6C6);
-            // Container bottom edge
-            context.fill(hStartX, hBottom + 4, hEndX, hBottom + 5, 0xFF555555);
+            // 1. Cover the old gap below shifted hotbar so container background is seamless
+            int gapTop    = hY + 17;
+            int gapBottom = gapTop + 5;
+            context.fill(hStartX, gapTop, hEndX, gapBottom, 0xFFC6C6C6);
+            context.fill(hStartX, gapBottom, hEndX, gapBottom + 1, 0xFF373737);
+
+            // 2. Render clean slot boxes for shifted hotbar slots
+            for (int col = 0; col < 9; col++) {
+                Slot slot = hotbarSlots[col];
+                if (slot == null) continue;
+                int sx = this.x + slot.x;
+                int sy = this.y + slot.y;
+
+                // Slot background
+                context.fill(sx, sy, sx + 16, sy + 16, 0xFF8B8B8B);
+                // Borders
+                context.fill(sx - 1, sy - 1, sx + 17, sy, 0xFF373737);
+                context.fill(sx - 1, sy, sx, sy + 17, 0xFF373737);
+                context.fill(sx + 16, sy, sx + 17, sy + 16, 0xFFFFFFFF);
+                context.fill(sx, sy + 16, sx + 17, sy + 17, 0xFFFFFFFF);
+
+                // Slot stack
+                var stack = slot.getStack();
+                if (!stack.isEmpty()) {
+                    context.drawItem(stack, sx, sy);
+                    context.drawStackOverlay(this.textRenderer, stack, sx, sy);
+                }
+
+                // Hover highlight
+                if (mouseX >= sx && mouseX < sx + 16 && mouseY >= sy && mouseY < sy + 16) {
+                    context.fill(sx, sy, sx + 16, sy + 16, 0x80FFFFFF);
+                }
+            }
         }
 
         Slot anchor = rowAnchors[0] != null ? rowAnchors[0] : rowAnchors[1];
@@ -115,31 +151,33 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
         // Draw active row highlight frame around the 9 slots
         if (activeRowSlots[0] != null && activeRowSlots[8] != null) {
-            int minX = activeRowSlots[0].x;
-            int maxX = activeRowSlots[8].x;
-            int y    = activeRowSlots[0].y;
+            int minX = this.x + activeRowSlots[0].x;
+            int maxX = this.x + activeRowSlots[8].x;
+            int y    = this.y + activeRowSlots[0].y;
 
             int boxX = minX - 1;
             int boxY = y - 1;
             int boxW = (maxX - minX) + 18;
             int boxH = 18;
 
-            context.fill(boxX,             boxY,             boxX + boxW,     boxY + 1,        0xCCFFFFFF);
-            context.fill(boxX,             boxY + boxH - 1,  boxX + boxW,     boxY + boxH,     0xCCFFFFFF);
-            context.fill(boxX,             boxY,             boxX + 1,        boxY + boxH,     0xCCFFFFFF);
-            context.fill(boxX + boxW - 1,  boxY,             boxX + boxW,     boxY + boxH,     0xCCFFFFFF);
+            context.fill(boxX,             boxY,             boxX + boxW,     boxY + 1,        0xFFFFFFFF);
+            context.fill(boxX,             boxY + boxH - 1,  boxX + boxW,     boxY + boxH,     0xFFFFFFFF);
+            context.fill(boxX,             boxY,             boxX + 1,        boxY + boxH,     0xFFFFFFFF);
+            context.fill(boxX + boxW - 1,  boxY,             boxX + boxW,     boxY + boxH,     0xFFFFFFFF);
+            context.fill(boxX + 1,         boxY + 1,         boxX + boxW - 1, boxY + boxH - 1, 0x1AFFFFFF);
         }
 
         // Draw 4 indicator cells to the left of the player inventory
         int indW = 7;
         int indH = 7;
-        int indX = anchor.x - indW - 3;
+        int indX = this.x + anchor.x - indW - 3;
 
         int[] rowOrder = { 1, 2, 3, 0 };
         for (int r : rowOrder) {
             Slot s = rowAnchors[r];
             if (s != null) {
-                HotbarCyclerUtil.drawIndicatorCell(context, indX, s.y + 5, indW, indH, r == page);
+                int indY = this.y + s.y + (18 - indH) / 2;
+                HotbarCyclerUtil.drawIndicatorCell(context, indX, indY, indW, indH, r == page);
             }
         }
     }
@@ -150,11 +188,18 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         if (slot.getClass().getName().contains("CreativeSlot")) {
             try {
                 if (hotbarcycler$creativeSlotField == null) {
-                    hotbarcycler$creativeSlotField = slot.getClass().getDeclaredField("slot");
-                    hotbarcycler$creativeSlotField.setAccessible(true);
+                    for (Field f : slot.getClass().getDeclaredFields()) {
+                        if (Slot.class.isAssignableFrom(f.getType())) {
+                            hotbarcycler$creativeSlotField = f;
+                            hotbarcycler$creativeSlotField.setAccessible(true);
+                            break;
+                        }
+                    }
                 }
-                Object wrapped = hotbarcycler$creativeSlotField.get(slot);
-                if (wrapped instanceof Slot realSlot) return realSlot;
+                if (hotbarcycler$creativeSlotField != null) {
+                    Object wrapped = hotbarcycler$creativeSlotField.get(slot);
+                    if (wrapped instanceof Slot realSlot) return realSlot;
+                }
             } catch (Exception ignored) {}
         }
         return slot;
