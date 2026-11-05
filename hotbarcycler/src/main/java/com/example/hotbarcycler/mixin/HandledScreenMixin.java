@@ -15,7 +15,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -55,41 +54,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Inject(method = "render", at = @At("TAIL"))
     private void hotbarcycler$onRenderTail(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         hotbarcycler$drawActiveRowHighlightAndIndicator(context);
-    }
-
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void hotbarcycler$onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
-        if (button != 0) return;
-
-        Slot[] rowSlots = new Slot[4];
-        for (Slot slot : this.handler.slots) {
-            int row = hotbarcycler$getSlotRow(slot);
-            if (row >= 0 && row < 4 && rowSlots[row] == null) {
-                rowSlots[row] = slot;
-            }
-        }
-
-        Slot anchor = rowSlots[0] != null ? rowSlots[0] : rowSlots[1];
-        if (anchor == null) return;
-
-        int indW = 7;
-        int indH = 7;
-        int indX = anchor.x - indW - 3;
-
-        int[] rowOrder = { 1, 2, 3, 0 };
-        if (mouseX >= indX && mouseX <= indX + indW) {
-            for (int r : rowOrder) {
-                Slot s = rowSlots[r];
-                if (s != null) {
-                    int slotY = s.y;
-                    if (mouseY >= slotY + 5 && mouseY <= slotY + 5 + indH) {
-                        HotbarCyclerClient.setHotbarRow(r);
-                        cir.setReturnValue(true);
-                        return;
-                    }
-                }
-            }
-        }
     }
 
     @Unique
