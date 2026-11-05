@@ -23,11 +23,11 @@ public abstract class PlayerInventoryMixin {
     private void hotbarcycler$getVisualSelectedStack(CallbackInfoReturnable<ItemStack> cir) {
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
         if (cfg != null && cfg.seamlessHotbar) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client != null && client.currentScreen != null && client.player != null) {
-                if ((Object) this == client.player.getInventory()) {
-                    int page = HotbarCyclerClient.getCurrentPage();
-                    if (page > 0 && page < 4) {
+            int page = HotbarCyclerClient.getCurrentPage();
+            if (page > 0 && page < 4) {
+                if (!HotbarCyclerClient.isRowSwapped()) {
+                    MinecraftClient client = MinecraftClient.getInstance();
+                    if (client != null && client.player != null && (Object) this == client.player.getInventory()) {
                         int idx = page * 9 + this.selectedSlot;
                         if (idx >= 0 && idx < this.main.size()) {
                             cir.setReturnValue(this.main.get(idx));

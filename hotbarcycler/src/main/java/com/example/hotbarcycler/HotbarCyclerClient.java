@@ -22,12 +22,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
     // ── Keybindings ───────────────────────────────────────────────────────────
     private static KeyBinding nextHotbarKey;
     private static KeyBinding prevHotbarKey;
-    private static KeyBinding nextColumnKey;
-    private static KeyBinding prevColumnKey;
     private static KeyBinding openSettingsKey;
-    private static KeyBinding toggleColumnPreviewKey;
     private static KeyBinding toggleRowIndicatorKey;
-    private static KeyBinding toggleInventoryOverlayKey;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
     private static int currentPage = 0;
@@ -36,16 +32,12 @@ public class HotbarCyclerClient implements ClientModInitializer {
     private static boolean wasNextDown = false;
     private static boolean wasPrevDown = false;
 
-    private static boolean columnPreviewVisible = true;
     private static boolean rowIndicatorVisible = true;
-    private static boolean inventoryOverlayVisible = false;
 
     // ── Getters ───────────────────────────────────────────────────────────────
     public static int     getCurrentPage()             { return currentPage; }
     public static boolean isRowSwapped()               { return isRowSwapped; }
-    public static boolean isColumnPreviewVisible()     { return columnPreviewVisible; }
     public static boolean isRowIndicatorVisible()      { return rowIndicatorVisible; }
-    public static boolean isInventoryOverlayVisible()  { return inventoryOverlayVisible; }
 
     public static KeyBinding getNextHotbarKey() { return nextHotbarKey; }
     public static KeyBinding getPrevHotbarKey() { return prevHotbarKey; }
@@ -110,12 +102,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
         nextHotbarKey = reg("key.hotbarcycler.next");
         prevHotbarKey = reg("key.hotbarcycler.prev");
-        nextColumnKey = reg("key.hotbarcycler.column_next");
-        prevColumnKey = reg("key.hotbarcycler.column_prev");
         openSettingsKey          = reg("key.hotbarcycler.open_settings");
-        toggleColumnPreviewKey   = reg("key.hotbarcycler.toggle_column_preview");
         toggleRowIndicatorKey    = reg("key.hotbarcycler.toggle_row_indicator");
-        toggleInventoryOverlayKey = reg("key.hotbarcycler.toggle_inventory_overlay");
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             currentPage             = 0;
@@ -123,8 +111,6 @@ public class HotbarCyclerClient implements ClientModInitializer {
             wasInScreen             = false;
             wasNextDown             = false;
             wasPrevDown             = false;
-            inventoryOverlayVisible = false;
-            columnPreviewVisible = HotbarCyclerConfig.get().showColumnPreview;
             rowIndicatorVisible  = HotbarCyclerConfig.get().showRowIndicator;
         });
 
@@ -172,22 +158,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new HotbarCyclerConfigScreen(client.currentScreen));
             }
-            while (toggleColumnPreviewKey.wasPressed()) {
-                columnPreviewVisible = !columnPreviewVisible;
-            }
             while (toggleRowIndicatorKey.wasPressed()) {
                 rowIndicatorVisible = !rowIndicatorVisible;
-            }
-            while (toggleInventoryOverlayKey.wasPressed()) {
-                inventoryOverlayVisible = !inventoryOverlayVisible;
-            }
-
-            int sel = client.player.getInventory().getSelectedSlot();
-            while (nextColumnKey.wasPressed()) {
-                ClientPlayNetworking.send(new CycleColumnPayload(sel, true));
-            }
-            while (prevColumnKey.wasPressed()) {
-                ClientPlayNetworking.send(new CycleColumnPayload(sel, false));
             }
         });
     }
