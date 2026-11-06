@@ -16,12 +16,14 @@ public class HotbarCyclerConfig {
     public AntiCheatMode antiCheatMode         = AntiCheatMode.NONE;
     public int           customSlotDelay       = 50;
     public boolean       customPauseSprint     = true;
+    public boolean       customBlockInput      = true;
     public boolean       customFreezeMovement  = true;
 
     // ── Row Indicator ─────────────────────────────────────────────────────────
     public boolean showRowIndicator        = true;
     public boolean seamlessHotbar          = false;
     public boolean revertToFixedSlots      = false;
+    public boolean revertSlotDelay         = false;
     public int     rowIndicatorOffsetX     = 0;
     public int     rowIndicatorOffsetY     = 0;
     public int     rowIndicatorSquareW     = 8;
@@ -41,6 +43,14 @@ public class HotbarCyclerConfig {
             return customPauseSprint;
         }
         return antiCheatMode.isPauseSprint();
+    }
+
+    public boolean getEffectiveBlockInput() {
+        if (antiCheatMode == null) return false;
+        if (antiCheatMode == AntiCheatMode.CUSTOM) {
+            return customBlockInput;
+        }
+        return antiCheatMode.isBlockInput();
     }
 
     public boolean getEffectiveFreezeMovement() {

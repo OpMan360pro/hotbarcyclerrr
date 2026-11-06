@@ -48,8 +48,8 @@ public class HotbarCyclerClient implements ClientModInitializer {
     // ── Runtime state ─────────────────────────────────────────────────────────
     private static int currentPage = 0;
     private static boolean isRowSwapped = false;
-    private static boolean rowIndicatorVisible = true;
-    private static boolean freezeEnabled = true;
+    private static boolean blockInputEnabled = true;
+    private static boolean freezeMovementEnabled = true;
     private static int freezeTicks = 0;
     private static boolean wasHandledScreen = false;
     private static boolean wasSprinting = false;
@@ -76,7 +76,12 @@ public class HotbarCyclerClient implements ClientModInitializer {
     private static ClientTransition activeTransition = null;
 
     public static boolean isMovementFrozen() {
-        if (!freezeEnabled) return false;
+        if (!freezeMovementEnabled) return false;
+        return activeTransition != null || freezeTicks > 0;
+    }
+
+    public static boolean isInputBlocked() {
+        if (!blockInputEnabled) return false;
         return activeTransition != null || freezeTicks > 0;
     }
 
@@ -86,7 +91,15 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
     public static int     getCurrentPage()             { return currentPage; }
     public static boolean isRowSwapped()               { return isRowSwapped; }
-    public static boolean isRowIndicatorVisible()      { return rowIndicatorVisible; }
+    public static boolean isRowIndicatorVisible()      { return HotbarCyclerConfig.get().showRowIndicator; }
+
+    public static void setRowIndicatorVisible(boolean visible) {
+        HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+        if (cfg != null) {
+            cfg.showRowIndicator = visible;
+            cfg.save();
+        }
+    }
 
     public static KeyBinding getNextHotbarKey() { return nextHotbarKey; }
     public static KeyBinding getPrevHotbarKey() { return prevHotbarKey; }
@@ -199,7 +212,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
     }
 
     private static void checkResumeSprint(MinecraftClient client) {
-        if (wasSprinting && !isMovementFrozen()) {
+        if (wasSprinting && !isInputBlocked() && !isMovementFrozen()) {
             wasSprinting = false;
             if (client != null && client.player != null) {
                 sendStartSprint(client.player);
@@ -257,7 +270,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
             sendCloseInventoryPacket(client.player);
         }
         activeTransition = null;
-        if (freezeEnabled) {
+        if (blockInputEnabled || freezeMovementEnabled) {
             freezeTicks = 1;
         } else {
             checkResumeSprint(client);
@@ -270,7 +283,19 @@ public class HotbarCyclerClient implements ClientModInitializer {
         setHotbarRow(target);
     }
 
+    public static void revertToFixed() {
+        if (currentPage == 0) return;
+        HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+        int delay = cfg.revertSlotDelay ? cfg.getEffectiveSlotDelay() : 0;
+        setHotbarRow(0, delay);
+    }
+
     public static void setHotbarRow(int targetRow) {
+        HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+        setHotbarRow(targetRow, cfg.getEffectiveSlotDelay());
+    }
+
+    public static void setHotbarRow(int targetRow, int delay) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.player == null) return;
         if (isTransitioning()) {
@@ -284,9 +309,9 @@ public class HotbarCyclerClient implements ClientModInitializer {
         if (client.currentScreen != null && !(client.currentScreen instanceof HandledScreen)) return;
 
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
-        int delay = (client.currentScreen instanceof HandledScreen) ? 0 : cfg.getEffectiveSlotDelay();
         boolean pauseSprint = cfg.getEffectivePauseSprint();
-        freezeEnabled = cfg.getEffectiveFreezeMovement();
+        blockInputEnabled = cfg.getEffectiveBlockInput();
+        freezeMovementEnabled = cfg.getEffectiveFreezeMovement();
 
         if (!pauseSprint && client.player.isSprinting()) {
             wasSprinting = true;
@@ -298,9 +323,11 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
         if (delay <= 0) {
             if (pauseSprint) sendStopSprint(client.player);
-            if (freezeEnabled && client.currentScreen == null) {
+            if (freezeMovementEnabled && client.currentScreen == null) {
                 var vel = client.player.getVelocity();
                 client.player.setVelocity(0.0, Math.min(0.0, vel.y), 0.0);
+            }
+            if ((blockInputEnabled || freezeMovementEnabled) && client.currentScreen == null) {
                 freezeTicks = 1;
             }
             for (SlotTransfer transfer : transfers) {
@@ -311,11 +338,13 @@ public class HotbarCyclerClient implements ClientModInitializer {
             if (client.currentScreen == null) {
                 sendCloseInventoryPacket(client.player);
             }
-            if (!freezeEnabled) {
+            if (!blockInputEnabled && !freezeMovementEnabled) {
                 checkResumeSprint(client);
             }
         } else {
-            startClientTransition(client, transfers, targetRow, delay, pauseSprint, freezeEnabled && client.currentScreen == null);
+            startClientTransition(client, transfers, targetRow, delay,
+                    pauseSprint && client.currentScreen == null,
+                    freezeMovementEnabled && client.currentScreen == null);
         }
     }
 
@@ -338,7 +367,6 @@ public class HotbarCyclerClient implements ClientModInitializer {
             freezeTicks         = 0;
             wasHandledScreen    = false;
             wasSprinting        = false;
-            rowIndicatorVisible = HotbarCyclerConfig.get().showRowIndicator;
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -358,7 +386,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
                 if (!wasHandledScreen) {
                     wasHandledScreen = true;
                     if (cfg.revertToFixedSlots && currentPage != 0) {
-                        setHotbarRow(0);
+                        revertToFixed();
                     }
                 }
             } else {
@@ -377,7 +405,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
                 }
                 while (returnFixedKey.wasPressed()) {
                     if (currentPage != 0) {
-                        setHotbarRow(0);
+                        revertToFixed();
                     }
                 }
             }
@@ -386,7 +414,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
                 client.setScreen(new HotbarCyclerConfigScreen(client.currentScreen));
             }
             while (toggleRowIndicatorKey.wasPressed()) {
-                rowIndicatorVisible = !rowIndicatorVisible;
+                setRowIndicatorVisible(!isRowIndicatorVisible());
             }
         });
     }

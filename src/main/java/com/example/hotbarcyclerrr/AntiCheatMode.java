@@ -1,19 +1,21 @@
 package com.example.hotbarcyclerrr;
 
 public enum AntiCheatMode {
-    NONE("None (Instant)", 0, false, false, "Instant swap (Default). No anti-cheat adjustments."),
-    CUSTOM("Custom", 50, true, true, "User-defined slot delay, sprint, and freeze behavior.");
+    NONE("None (Instant)", 0, false, false, false, "Instant swap (Default). No anti-cheat adjustments."),
+    CUSTOM("Custom", 50, true, true, true, "User-defined slot delay, sprint, input, and freeze behavior.");
 
     private final String displayName;
     private final int delayMs;
     private final boolean pauseSprint;
+    private final boolean blockInput;
     private final boolean freezeMovement;
     private final String description;
 
-    AntiCheatMode(String displayName, int delayMs, boolean pauseSprint, boolean freezeMovement, String description) {
+    AntiCheatMode(String displayName, int delayMs, boolean pauseSprint, boolean blockInput, boolean freezeMovement, String description) {
         this.displayName = displayName;
         this.delayMs = delayMs;
         this.pauseSprint = pauseSprint;
+        this.blockInput = blockInput;
         this.freezeMovement = freezeMovement;
         this.description = description;
     }
@@ -28,6 +30,10 @@ public enum AntiCheatMode {
 
     public boolean isPauseSprint() {
         return pauseSprint;
+    }
+
+    public boolean isBlockInput() {
+        return blockInput;
     }
 
     public boolean isFreezeMovement() {
@@ -48,4 +54,5 @@ public enum AntiCheatMode {
         return values[(this.ordinal() - 1 + values.length) % values.length];
     }
 }
+
 

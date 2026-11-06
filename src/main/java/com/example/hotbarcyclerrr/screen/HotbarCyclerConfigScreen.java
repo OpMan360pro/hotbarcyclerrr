@@ -29,16 +29,16 @@ public class HotbarCyclerConfigScreen extends Screen {
     private final Screen parent;
 
     // ── Widgets ───────────────────────────────────────────────────────────────
-    private ButtonWidget    antiCheatBtn, pauseSprintBtn, freezeMovementBtn;
+    private ButtonWidget    antiCheatBtn, pauseSprintBtn, blockInputBtn, freezeMovementBtn;
     private TextFieldWidget delayField;
-    private ButtonWidget    rowShowBtn, revertToFixedBtn;
+    private ButtonWidget    rowShowBtn, revertToFixedBtn, revertDelayBtn;
     private TextFieldWidget rowOffX, rowOffY, rowSqW, rowSqH;
 
     // ── Working state ─────────────────────────────────────────────────────────
     private AntiCheatMode wMode;
-    private boolean       wPauseSprint, wFreezeMovement;
+    private boolean       wPauseSprint, wBlockInput, wFreezeMovement;
     private int           wDelay;
-    private boolean       wRowShow, wRevertToFixedSlots;
+    private boolean       wRowShow, wRevertToFixedSlots, wRevertSlotDelay;
 
     // ── Post-render text entries
     private record LabelEntry(int cx, int y, String text, int color, boolean shadow) {}
@@ -60,47 +60,58 @@ public class HotbarCyclerConfigScreen extends Screen {
 
         wMode               = (cfg.antiCheatMode != null) ? cfg.antiCheatMode : AntiCheatMode.NONE;
         wPauseSprint        = cfg.getEffectivePauseSprint();
+        wBlockInput         = cfg.getEffectiveBlockInput();
         wFreezeMovement     = cfg.getEffectiveFreezeMovement();
         wDelay              = cfg.getEffectiveSlotDelay();
-        wRowShow            = cfg.showRowIndicator;
+        wRowShow            = com.example.hotbarcyclerrr.HotbarCyclerClient.isRowIndicatorVisible();
         wRevertToFixedSlots = cfg.revertToFixedSlots;
+        wRevertSlotDelay    = cfg.revertSlotDelay;
 
         int cx = width / 2;
 
         // ── Anti-Cheat Section ────────────────────────────────────────────────
-        sectionLabel("-- Anti-Cheat Compatibility --", cx, 18);
+        sectionLabel("-- Anti-Cheat Compatibility --", cx, 16);
 
         antiCheatBtn = addDrawableChild(ButtonWidget.builder(antiCheatMsg(wMode), b -> {
             wMode = wMode.next();
             if (wMode != AntiCheatMode.CUSTOM) {
                 wPauseSprint    = wMode.isPauseSprint();
+                wBlockInput     = wMode.isBlockInput();
                 wFreezeMovement = wMode.isFreezeMovement();
                 wDelay          = wMode.getDelayMs();
             }
             b.setMessage(antiCheatMsg(wMode));
             if (pauseSprintBtn != null) pauseSprintBtn.setMessage(toggleMsg("Pause Sprint", wPauseSprint));
+            if (blockInputBtn != null) blockInputBtn.setMessage(toggleMsg("Block Input", wBlockInput));
             if (freezeMovementBtn != null) freezeMovementBtn.setMessage(toggleMsg("Freeze Movement", wFreezeMovement));
             if (delayField != null) delayField.setText(String.valueOf(wDelay));
-        }).dimensions(cx - 154, 29, 308, BTN_H).build());
+        }).dimensions(cx - 154, 26, 308, BTN_H).build());
 
-        // Note: description rendered dynamically at y = 52 in render()
+        // Note: description rendered dynamically at y = 48 in render()
 
         pauseSprintBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Pause Sprint", wPauseSprint), b -> {
             wPauseSprint = !wPauseSprint;
             wMode = AntiCheatMode.CUSTOM;
             antiCheatBtn.setMessage(antiCheatMsg(wMode));
             b.setMessage(toggleMsg("Pause Sprint", wPauseSprint));
-        }).dimensions(cx - 154, 64, 150, BTN_H).build());
+        }).dimensions(cx - 154, 58, 150, BTN_H).build());
+
+        blockInputBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Block Input", wBlockInput), b -> {
+            wBlockInput = !wBlockInput;
+            wMode = AntiCheatMode.CUSTOM;
+            antiCheatBtn.setMessage(antiCheatMsg(wMode));
+            b.setMessage(toggleMsg("Block Input", wBlockInput));
+        }).dimensions(cx + 4, 58, 150, BTN_H).build());
 
         freezeMovementBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Freeze Movement", wFreezeMovement), b -> {
             wFreezeMovement = !wFreezeMovement;
             wMode = AntiCheatMode.CUSTOM;
             antiCheatBtn.setMessage(antiCheatMsg(wMode));
             b.setMessage(toggleMsg("Freeze Movement", wFreezeMovement));
-        }).dimensions(cx + 4, 64, 150, BTN_H).build());
+        }).dimensions(cx - 154, 81, 150, BTN_H).build());
 
-        postLabels.add(new LabelEntry(cx - 28, 93, "Slot Delay:", C_WHITE, true));
-        delayField = new TextFieldWidget(textRenderer, cx + 12, 88, 42, 18, Text.empty());
+        postLabels.add(new LabelEntry(cx + 38, 86, "Slot Delay:", C_WHITE, true));
+        delayField = new TextFieldWidget(textRenderer, cx + 78, 81, 40, 18, Text.empty());
         delayField.setText(String.valueOf(wDelay));
         delayField.setMaxLength(5);
         delayField.setTextPredicate(s -> s.matches("\\d{0,5}"));
@@ -112,38 +123,44 @@ public class HotbarCyclerConfigScreen extends Screen {
             }
         });
         addDrawableChild(delayField);
-        postLabels.add(new LabelEntry(cx + 70, 93, "ms", C_WHITE, true));
+        postLabels.add(new LabelEntry(cx + 128, 86, "ms", C_WHITE, true));
 
         // ── Visibility & Revert Section ──────────────────────────────────────
-        sectionLabel("-- Visibility & Fixed Slots --", cx, 114);
+        sectionLabel("-- Visibility & Fixed Slots --", cx, 105);
 
         rowShowBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Show Row Indicator", wRowShow), b -> {
             wRowShow = !wRowShow; b.setMessage(toggleMsg("Show Row Indicator", wRowShow));
-        }).dimensions(cx - 154, 126, 150, BTN_H).build());
+        }).dimensions(cx - 154, 116, 150, BTN_H).build());
 
         revertToFixedBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Revert to Fixed Slots", wRevertToFixedSlots), b -> {
-            wRevertToFixedSlots = !wRevertToFixedSlots; b.setMessage(toggleMsg("Revert to Fixed Slots", wRevertToFixedSlots));
-        }).dimensions(cx + 4, 126, 150, BTN_H).build());
+            wRevertToFixedSlots = !wRevertToFixedSlots;
+            b.setMessage(toggleMsg("Revert to Fixed Slots", wRevertToFixedSlots));
+            if (revertDelayBtn != null) revertDelayBtn.active = wRevertToFixedSlots;
+        }).dimensions(cx + 4, 116, 150, BTN_H).build());
 
-        smallLabel("Left: HUD squares indicator.  Right: return items on menu open.", cx, 150);
+        revertDelayBtn = addDrawableChild(ButtonWidget.builder(toggleMsg("Revert Slot Delay", wRevertSlotDelay), b -> {
+            wRevertSlotDelay = !wRevertSlotDelay;
+            b.setMessage(toggleMsg("Revert Slot Delay", wRevertSlotDelay));
+        }).dimensions(cx + 4, 139, 150, BTN_H).build());
+        revertDelayBtn.active = wRevertToFixedSlots;
 
         // ── Position & Size Section ───────────────────────────────────────────
-        sectionLabel("-- Indicator Position & Size --", cx, 165);
+        sectionLabel("-- Indicator Position & Size --", cx, 163);
 
         int fX1 = cx - 105, fX2 = cx - 35, fX3 = cx + 35, fX4 = cx + 105;
-        postLabels.add(new LabelEntry(fX1, 177, "Offset X", C_WHITE, true));
-        postLabels.add(new LabelEntry(fX2, 177, "Offset Y", C_WHITE, true));
-        postLabels.add(new LabelEntry(fX3, 177, "Width",    C_WHITE, true));
-        postLabels.add(new LabelEntry(fX4, 177, "Height",   C_WHITE, true));
+        postLabels.add(new LabelEntry(fX1, 175, "Offset X", C_WHITE, true));
+        postLabels.add(new LabelEntry(fX2, 175, "Offset Y", C_WHITE, true));
+        postLabels.add(new LabelEntry(fX3, 175, "Width",    C_WHITE, true));
+        postLabels.add(new LabelEntry(fX4, 175, "Height",   C_WHITE, true));
 
-        rowOffX = mkField(fX1 - 18, 188, cfg.rowIndicatorOffsetX, true);
-        rowOffY = mkField(fX2 - 18, 188, cfg.rowIndicatorOffsetY, true);
-        rowSqW  = mkField(fX3 - 18, 188, cfg.rowIndicatorSquareW, false);
-        rowSqH  = mkField(fX4 - 18, 188, cfg.rowIndicatorSquareH, false);
+        rowOffX = mkField(fX1 - 18, 186, cfg.rowIndicatorOffsetX, true);
+        rowOffY = mkField(fX2 - 18, 186, cfg.rowIndicatorOffsetY, true);
+        rowSqW  = mkField(fX3 - 18, 186, cfg.rowIndicatorSquareW, false);
+        rowSqH  = mkField(fX4 - 18, 186, cfg.rowIndicatorSquareH, false);
 
-        smallLabel("Default: Offset 0, 0 | Size 8x8", cx, 210);
+        smallLabel("Default: Offset 0, 0 | Size 8x8", cx, 207);
 
-        int by = Math.max(225, height - 26);
+        int by = Math.max(222, height - 24);
         addDrawableChild(ButtonWidget.builder(Text.literal("Save & Close"),
                 b -> saveAndClose()).dimensions(cx - 154, by, 150, BTN_H).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Cancel"),
@@ -161,7 +178,7 @@ public class HotbarCyclerConfigScreen extends Screen {
             ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(e.text()), e.cx(), e.y(), e.color());
         }
 
-        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("§7" + wMode.getDescription() + "§r"), width / 2, 52, C_GRAY);
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("§7" + wMode.getDescription() + "§r"), width / 2, 48, C_GRAY);
     }
 
     private void saveAndClose() {
@@ -169,10 +186,15 @@ public class HotbarCyclerConfigScreen extends Screen {
 
         cfg.antiCheatMode        = wMode;
         cfg.customPauseSprint    = wPauseSprint;
+        cfg.customBlockInput     = wBlockInput;
         cfg.customFreezeMovement = wFreezeMovement;
         cfg.customSlotDelay      = parseInt(delayField, wDelay);
-        if (rowShowBtn       != null) cfg.showRowIndicator   = wRowShow;
+        if (rowShowBtn       != null) {
+            cfg.showRowIndicator   = wRowShow;
+            com.example.hotbarcyclerrr.HotbarCyclerClient.setRowIndicatorVisible(wRowShow);
+        }
         if (revertToFixedBtn != null) cfg.revertToFixedSlots = wRevertToFixedSlots;
+        if (revertDelayBtn   != null) cfg.revertSlotDelay    = wRevertSlotDelay;
         if (rowOffX          != null) cfg.rowIndicatorOffsetX = parseInt(rowOffX, 0);
         if (rowOffY          != null) cfg.rowIndicatorOffsetY = parseInt(rowOffY, 0);
         if (rowSqW           != null) cfg.rowIndicatorSquareW = Math.max(1, parseInt(rowSqW, 8));
