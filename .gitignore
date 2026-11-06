@@ -4,4 +4,8 @@ bin/
 run/
 .idea/
 *.iml
+.vscode/
+.clinerules
+.roorules
+.roomodes
 repomix-output.xml
