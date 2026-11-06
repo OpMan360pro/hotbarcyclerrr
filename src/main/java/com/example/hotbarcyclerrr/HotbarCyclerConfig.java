@@ -14,7 +14,7 @@ public class HotbarCyclerConfig {
 
     // ── Anti-Cheat Compatibility ──────────────────────────────────────────────
     public AntiCheatMode antiCheatMode         = AntiCheatMode.NONE;
-    public int           customSlotDelay       = 1;
+    public int           customSlotDelay       = 50;
     public boolean       customPauseSprint     = true;
     public boolean       customFreezeMovement  = true;
 
@@ -32,7 +32,7 @@ public class HotbarCyclerConfig {
         if (antiCheatMode == AntiCheatMode.CUSTOM) {
             return Math.max(0, customSlotDelay);
         }
-        return antiCheatMode.getDelayTicks();
+        return antiCheatMode.getDelayMs();
     }
 
     public boolean getEffectivePauseSprint() {
@@ -68,6 +68,9 @@ public class HotbarCyclerConfig {
                 HotbarCyclerConfig cfg = GSON.fromJson(r, HotbarCyclerConfig.class);
                 if (cfg != null) {
                     if (cfg.antiCheatMode == null) cfg.antiCheatMode = AntiCheatMode.NONE;
+                    if (cfg.customSlotDelay > 0 && cfg.customSlotDelay <= 5) {
+                        cfg.customSlotDelay *= 50;
+                    }
                     return cfg;
                 }
             } catch (IOException | com.google.gson.JsonParseException e) {

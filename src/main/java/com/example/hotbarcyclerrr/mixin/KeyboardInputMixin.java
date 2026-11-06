@@ -21,7 +21,10 @@ public abstract class KeyboardInputMixin extends Input {
             this.movementVector = Vec2f.ZERO;
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null) {
-                client.player.setSprinting(false);
+                com.example.hotbarcyclerrr.HotbarCyclerConfig cfg = com.example.hotbarcyclerrr.HotbarCyclerConfig.get();
+                if (cfg != null && cfg.getEffectivePauseSprint()) {
+                    client.player.setSprinting(false);
+                }
                 var vel = client.player.getVelocity();
                 client.player.setVelocity(0.0, Math.min(0.0, vel.y), 0.0);
             }

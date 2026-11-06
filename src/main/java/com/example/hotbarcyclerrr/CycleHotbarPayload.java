@@ -12,7 +12,7 @@ import net.minecraft.util.Identifier;
  *   2 = Inventory row 2 (slots 18-26)
  *   3 = Inventory row 3 (slots 27-35)
  */
-public record CycleHotbarPayload(int targetRow, int slotDelayTicks, boolean pauseSprint, boolean freezeMovement) implements CustomPayload {
+public record CycleHotbarPayload(int targetRow, int slotDelayMs, boolean pauseSprint, boolean freezeMovement) implements CustomPayload {
 
     public CycleHotbarPayload(int targetRow) {
         this(targetRow, 0, false, false);
@@ -25,7 +25,7 @@ public record CycleHotbarPayload(int targetRow, int slotDelayTicks, boolean paus
             PacketCodec.of(
                     (value, buf) -> {
                         buf.writeInt(value.targetRow());
-                        buf.writeInt(value.slotDelayTicks());
+                        buf.writeInt(value.slotDelayMs());
                         buf.writeBoolean(value.pauseSprint());
                         buf.writeBoolean(value.freezeMovement());
                     },

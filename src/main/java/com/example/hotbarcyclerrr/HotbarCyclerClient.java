@@ -18,11 +18,22 @@ import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class HotbarCyclerClient implements ClientModInitializer {
 
     private static final KeyBinding.Category CATEGORY =
             KeyBinding.Category.create(Identifier.of("hotbarcyclerrr", "hotbarcyclerrr"));
+
+    private static final ScheduledExecutorService SCHEDULER =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "HotbarCycler-Worker");
+                t.setDaemon(true);
+                return t;
+            });
 
     // ── Keybindings ───────────────────────────────────────────────────────────
     private static KeyBinding nextHotbarKey;
@@ -38,24 +49,27 @@ public class HotbarCyclerClient implements ClientModInitializer {
     private static boolean freezeEnabled = true;
     private static int freezeTicks = 0;
     private static boolean wasHandledScreen = false;
+    private static boolean wasSprinting = false;
 
-    public record SwapStep(int slotId, int button) {}
+    public record SlotTransfer(int col, int fromInvIndex, int toInvIndex) {}
 
     private static class ClientTransition {
-        final List<SwapStep> steps;
+        final long id;
+        final List<SlotTransfer> transfers;
         final int targetPage;
-        final int delayTicks;
+        final int delayMs;
         int currentStep = 0;
-        int ticksRemaining = 0;
 
-        ClientTransition(List<SwapStep> steps, int targetPage, int delayTicks) {
-            this.steps = steps;
+        ClientTransition(long id, List<SlotTransfer> transfers, int targetPage, int delayMs) {
+            this.id = id;
+            this.transfers = transfers;
             this.targetPage = targetPage;
-            this.delayTicks = Math.max(0, delayTicks);
-            this.ticksRemaining = 0;
+            this.delayMs = Math.max(0, delayMs);
+            this.currentStep = 0;
         }
     }
 
+    private static final AtomicLong TRANSITION_COUNTER = new AtomicLong(0);
     private static ClientTransition activeTransition = null;
 
     public static boolean isMovementFrozen() {
@@ -86,31 +100,33 @@ public class HotbarCyclerClient implements ClientModInitializer {
         return (client != null && client.currentScreen == null) ? playerInvIndex : -1;
     }
 
-    private static List<SwapStep> buildSwapSteps(MinecraftClient client, int fromPage, int toPage) {
-        List<SwapStep> steps = new ArrayList<>();
-        if (fromPage >= 1 && fromPage <= 3) {
-            for (int col = 0; col < 9; col++) {
-                int slotId = getContainerSlotId(client, fromPage * 9 + col);
-                if (slotId >= 0) {
-                    steps.add(new SwapStep(slotId, col));
-                }
+    private static List<SlotTransfer> buildTransfers(int fromPage, int toPage) {
+        List<SlotTransfer> transfers = new ArrayList<>(9);
+        for (int col = 0; col < 9; col++) {
+            int fromIdx = (fromPage >= 1 && fromPage <= 3) ? (fromPage * 9 + col) : -1;
+            int toIdx   = (toPage >= 1 && toPage <= 3)   ? (toPage * 9 + col)   : -1;
+            if (fromIdx >= 0 || toIdx >= 0) {
+                transfers.add(new SlotTransfer(col, fromIdx, toIdx));
             }
         }
-        if (toPage >= 1 && toPage <= 3) {
-            for (int col = 0; col < 9; col++) {
-                int slotId = getContainerSlotId(client, toPage * 9 + col);
-                if (slotId >= 0) {
-                    steps.add(new SwapStep(slotId, col));
-                }
-            }
-        }
-        return steps;
+        return transfers;
     }
 
-    private static void executeStep(MinecraftClient client, SwapStep step) {
+    private static void executeTransfer(MinecraftClient client, SlotTransfer transfer) {
         if (client == null || client.interactionManager == null || client.player == null) return;
         int syncId = client.player.currentScreenHandler != null ? client.player.currentScreenHandler.syncId : 0;
-        client.interactionManager.clickSlot(syncId, step.slotId(), step.button(), SlotActionType.SWAP, client.player);
+        if (transfer.fromInvIndex() >= 0) {
+            int slotId = getContainerSlotId(client, transfer.fromInvIndex());
+            if (slotId >= 0) {
+                client.interactionManager.clickSlot(syncId, slotId, transfer.col(), SlotActionType.SWAP, client.player);
+            }
+        }
+        if (transfer.toInvIndex() >= 0) {
+            int slotId = getContainerSlotId(client, transfer.toInvIndex());
+            if (slotId >= 0) {
+                client.interactionManager.clickSlot(syncId, slotId, transfer.col(), SlotActionType.SWAP, client.player);
+            }
+        }
     }
 
     private static void sendStopSprint(ClientPlayerEntity player) {
@@ -121,14 +137,31 @@ public class HotbarCyclerClient implements ClientModInitializer {
         }
     }
 
+    private static void sendStartSprint(ClientPlayerEntity player) {
+        if (player != null && player.networkHandler != null) {
+            player.setSprinting(true);
+            player.networkHandler.sendPacket(new ClientCommandC2SPacket(
+                    player, ClientCommandC2SPacket.Mode.START_SPRINTING));
+        }
+    }
+
     private static void sendCloseInventoryPacket(ClientPlayerEntity player) {
         if (player != null && player.networkHandler != null) {
             player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(0));
         }
     }
 
-    private static void startClientTransition(MinecraftClient client, List<SwapStep> steps, int targetPage, int delayTicks, boolean pauseSprint, boolean freeze) {
-        if (client.player == null || steps.isEmpty()) return;
+    private static void checkResumeSprint(MinecraftClient client) {
+        if (wasSprinting && !isMovementFrozen()) {
+            wasSprinting = false;
+            if (client != null && client.player != null) {
+                sendStartSprint(client.player);
+            }
+        }
+    }
+
+    private static void startClientTransition(MinecraftClient client, List<SlotTransfer> transfers, int targetPage, int delayMs, boolean pauseSprint, boolean freeze) {
+        if (client.player == null || transfers.isEmpty()) return;
         if (pauseSprint) {
             sendStopSprint(client.player);
         }
@@ -136,52 +169,51 @@ public class HotbarCyclerClient implements ClientModInitializer {
             var vel = client.player.getVelocity();
             client.player.setVelocity(0.0, Math.min(0.0, vel.y), 0.0);
         }
-        activeTransition = new ClientTransition(steps, targetPage, delayTicks);
-        executeStep(client, steps.get(0));
+
+        long id = TRANSITION_COUNTER.incrementAndGet();
+        activeTransition = new ClientTransition(id, transfers, targetPage, delayMs);
+
+        executeTransfer(client, transfers.get(0));
         activeTransition.currentStep = 1;
-        activeTransition.ticksRemaining = delayTicks;
-    }
 
-    private static void tickClientTransition(MinecraftClient client) {
-        if (activeTransition == null || client.player == null) return;
-
-        if (activeTransition.ticksRemaining > 0) {
-            activeTransition.ticksRemaining--;
-            return;
-        }
-
-        if (activeTransition.currentStep < activeTransition.steps.size()) {
-            executeStep(client, activeTransition.steps.get(activeTransition.currentStep));
-            activeTransition.currentStep++;
-            activeTransition.ticksRemaining = activeTransition.delayTicks;
-        }
-
-        if (activeTransition.currentStep >= activeTransition.steps.size()) {
-            currentPage = activeTransition.targetPage;
-            isRowSwapped = (currentPage != 0);
-            if (client.currentScreen == null) {
-                sendCloseInventoryPacket(client.player);
-            }
-            activeTransition = null;
-            if (freezeEnabled) {
-                freezeTicks = 1;
-            }
+        if (activeTransition.currentStep < transfers.size()) {
+            scheduleNextStep(client, id);
+        } else {
+            completeTransition(client);
         }
     }
 
-    public static void finishClientTransitionIfRunning(MinecraftClient client) {
-        if (activeTransition != null && client != null && client.player != null) {
-            while (activeTransition.currentStep < activeTransition.steps.size()) {
-                executeStep(client, activeTransition.steps.get(activeTransition.currentStep));
-                activeTransition.currentStep++;
+    private static void scheduleNextStep(MinecraftClient client, long id) {
+        if (activeTransition == null || activeTransition.id != id) return;
+        int delay = activeTransition.delayMs;
+        SCHEDULER.schedule(() -> client.execute(() -> {
+            if (activeTransition != null && activeTransition.id == id && client.player != null) {
+                if (activeTransition.currentStep < activeTransition.transfers.size()) {
+                    executeTransfer(client, activeTransition.transfers.get(activeTransition.currentStep));
+                    activeTransition.currentStep++;
+                }
+
+                if (activeTransition.currentStep < activeTransition.transfers.size()) {
+                    scheduleNextStep(client, id);
+                } else {
+                    completeTransition(client);
+                }
             }
-            currentPage = activeTransition.targetPage;
-            isRowSwapped = (currentPage != 0);
-            if (client.currentScreen == null) {
-                sendCloseInventoryPacket(client.player);
-            }
-            activeTransition = null;
-            freezeTicks = 0;
+        }), delay, TimeUnit.MILLISECONDS);
+    }
+
+    private static void completeTransition(MinecraftClient client) {
+        if (activeTransition == null) return;
+        currentPage = activeTransition.targetPage;
+        isRowSwapped = (currentPage != 0);
+        if (client.currentScreen == null && client.player != null) {
+            sendCloseInventoryPacket(client.player);
+        }
+        activeTransition = null;
+        if (freezeEnabled) {
+            freezeTicks = 1;
+        } else {
+            checkResumeSprint(client);
         }
     }
 
@@ -203,9 +235,13 @@ public class HotbarCyclerClient implements ClientModInitializer {
         boolean pauseSprint = cfg.getEffectivePauseSprint();
         freezeEnabled = cfg.getEffectiveFreezeMovement();
 
+        if (!pauseSprint && client.player.isSprinting()) {
+            wasSprinting = true;
+        }
+
         int oldPage = currentPage;
-        List<SwapStep> steps = buildSwapSteps(client, oldPage, targetRow);
-        if (steps.isEmpty()) return;
+        List<SlotTransfer> transfers = buildTransfers(oldPage, targetRow);
+        if (transfers.isEmpty()) return;
 
         if (delay <= 0) {
             if (pauseSprint) sendStopSprint(client.player);
@@ -214,16 +250,19 @@ public class HotbarCyclerClient implements ClientModInitializer {
                 client.player.setVelocity(0.0, Math.min(0.0, vel.y), 0.0);
                 freezeTicks = 1;
             }
-            for (SwapStep step : steps) {
-                executeStep(client, step);
+            for (SlotTransfer transfer : transfers) {
+                executeTransfer(client, transfer);
             }
             currentPage = targetRow;
             isRowSwapped = (currentPage != 0);
             if (client.currentScreen == null) {
                 sendCloseInventoryPacket(client.player);
             }
+            if (!freezeEnabled) {
+                checkResumeSprint(client);
+            }
         } else {
-            startClientTransition(client, steps, targetRow, delay, pauseSprint, freezeEnabled && client.currentScreen == null);
+            startClientTransition(client, transfers, targetRow, delay, pauseSprint, freezeEnabled && client.currentScreen == null);
         }
     }
 
@@ -245,6 +284,7 @@ public class HotbarCyclerClient implements ClientModInitializer {
             activeTransition    = null;
             freezeTicks         = 0;
             wasHandledScreen    = false;
+            wasSprinting        = false;
             rowIndicatorVisible = HotbarCyclerConfig.get().showRowIndicator;
         });
 
@@ -253,9 +293,10 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
             if (freezeTicks > 0) {
                 freezeTicks--;
+                if (freezeTicks == 0) {
+                    checkResumeSprint(client);
+                }
             }
-
-            tickClientTransition(client);
 
             boolean inHandledScreen = (client.currentScreen instanceof HandledScreen);
             HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
@@ -263,9 +304,6 @@ public class HotbarCyclerClient implements ClientModInitializer {
             if (inHandledScreen) {
                 if (!wasHandledScreen) {
                     wasHandledScreen = true;
-                    if (isTransitioning()) {
-                        finishClientTransitionIfRunning(client);
-                    }
                     if (cfg.revertToFixedSlots && currentPage != 0) {
                         setHotbarRow(0);
                     }
@@ -273,7 +311,6 @@ public class HotbarCyclerClient implements ClientModInitializer {
             } else {
                 if (wasHandledScreen) {
                     wasHandledScreen = false;
-                    finishClientTransitionIfRunning(client);
                 }
             }
 

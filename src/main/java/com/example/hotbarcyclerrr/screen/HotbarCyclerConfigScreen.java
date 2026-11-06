@@ -75,7 +75,7 @@ public class HotbarCyclerConfigScreen extends Screen {
             if (wMode != AntiCheatMode.CUSTOM) {
                 wPauseSprint    = wMode.isPauseSprint();
                 wFreezeMovement = wMode.isFreezeMovement();
-                wDelay          = wMode.getDelayTicks();
+                wDelay          = wMode.getDelayMs();
             }
             b.setMessage(antiCheatMsg(wMode));
             if (pauseSprintBtn != null) pauseSprintBtn.setMessage(toggleMsg("Pause Sprint", wPauseSprint));
@@ -99,20 +99,20 @@ public class HotbarCyclerConfigScreen extends Screen {
             b.setMessage(toggleMsg("Freeze Movement", wFreezeMovement));
         }).dimensions(cx + 4, 64, 150, BTN_H).build());
 
-        postLabels.add(new LabelEntry(cx - 24, 93, "Slot Delay:", C_WHITE, true));
-        delayField = new TextFieldWidget(textRenderer, cx + 12, 88, 30, 18, Text.empty());
+        postLabels.add(new LabelEntry(cx - 28, 93, "Slot Delay:", C_WHITE, true));
+        delayField = new TextFieldWidget(textRenderer, cx + 12, 88, 42, 18, Text.empty());
         delayField.setText(String.valueOf(wDelay));
-        delayField.setMaxLength(3);
-        delayField.setTextPredicate(s -> s.matches("\\d{0,3}"));
+        delayField.setMaxLength(5);
+        delayField.setTextPredicate(s -> s.matches("\\d{0,5}"));
         delayField.setChangedListener(s -> {
             wDelay = parseInt(delayField, 0);
-            if (wMode != AntiCheatMode.CUSTOM && wDelay != wMode.getDelayTicks()) {
+            if (wMode != AntiCheatMode.CUSTOM && wDelay != wMode.getDelayMs()) {
                 wMode = AntiCheatMode.CUSTOM;
                 if (antiCheatBtn != null) antiCheatBtn.setMessage(antiCheatMsg(wMode));
             }
         });
         addDrawableChild(delayField);
-        postLabels.add(new LabelEntry(cx + 58, 93, "ticks", C_WHITE, true));
+        postLabels.add(new LabelEntry(cx + 70, 93, "ms", C_WHITE, true));
 
         // ── Visibility & Revert Section ──────────────────────────────────────
         sectionLabel("-- Visibility & Fixed Slots --", cx, 114);
