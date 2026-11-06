@@ -6,10 +6,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
 import net.minecraft.screen.slot.Slot;
@@ -114,6 +117,14 @@ public class HotbarCyclerClient implements ClientModInitializer {
 
     private static void executeTransfer(MinecraftClient client, SlotTransfer transfer) {
         if (client == null || client.interactionManager == null || client.player == null) return;
+
+        boolean isCreative = (client.currentScreen instanceof CreativeInventoryScreen)
+                || (client.player.currentScreenHandler instanceof CreativeInventoryScreen.CreativeScreenHandler);
+        if (isCreative) {
+            executeCreativeTransfer(client, transfer);
+            return;
+        }
+
         int syncId = client.player.currentScreenHandler != null ? client.player.currentScreenHandler.syncId : 0;
         if (transfer.fromInvIndex() >= 0) {
             int slotId = getContainerSlotId(client, transfer.fromInvIndex());
@@ -125,6 +136,42 @@ public class HotbarCyclerClient implements ClientModInitializer {
             int slotId = getContainerSlotId(client, transfer.toInvIndex());
             if (slotId >= 0) {
                 client.interactionManager.clickSlot(syncId, slotId, transfer.col(), SlotActionType.SWAP, client.player);
+            }
+        }
+    }
+
+    private static void executeCreativeTransfer(MinecraftClient client, SlotTransfer transfer) {
+        if (client == null || client.interactionManager == null || client.player == null) return;
+        PlayerInventory inv = client.player.getInventory();
+        int col = transfer.col();
+
+        if (transfer.fromInvIndex() >= 0) {
+            int fromIdx = transfer.fromInvIndex();
+            ItemStack hotbarStack = inv.getStack(col);
+            ItemStack fromStack = inv.getStack(fromIdx);
+            inv.setStack(col, fromStack);
+            inv.setStack(fromIdx, hotbarStack);
+            client.interactionManager.clickCreativeStack(fromStack, 36 + col);
+            client.interactionManager.clickCreativeStack(hotbarStack, fromIdx);
+        }
+        if (transfer.toInvIndex() >= 0) {
+            int toIdx = transfer.toInvIndex();
+            ItemStack hotbarStack = inv.getStack(col);
+            ItemStack toStack = inv.getStack(toIdx);
+            inv.setStack(col, toStack);
+            inv.setStack(toIdx, hotbarStack);
+            client.interactionManager.clickCreativeStack(toStack, 36 + col);
+            client.interactionManager.clickCreativeStack(hotbarStack, toIdx);
+        }
+
+        if (client.player.currentScreenHandler != null) {
+            for (Slot slot : client.player.currentScreenHandler.slots) {
+                if (slot.inventory == inv) {
+                    int idx = slot.getIndex();
+                    if (idx == col || idx == transfer.fromInvIndex() || idx == transfer.toInvIndex()) {
+                        slot.markDirty();
+                    }
+                }
             }
         }
     }
@@ -224,14 +271,20 @@ public class HotbarCyclerClient implements ClientModInitializer {
     }
 
     public static void setHotbarRow(int targetRow) {
-        if (isTransitioning()) return;
-        if (targetRow < 0 || targetRow > 3 || targetRow == currentPage) return;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) return;
+        if (client == null || client.player == null) return;
+        if (isTransitioning()) {
+            if (client.currentScreen instanceof HandledScreen && targetRow == 0) {
+                activeTransition = null;
+            } else {
+                return;
+            }
+        }
+        if (targetRow < 0 || targetRow > 3 || targetRow == currentPage) return;
         if (client.currentScreen != null && !(client.currentScreen instanceof HandledScreen)) return;
 
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
-        int delay = cfg.getEffectiveSlotDelay();
+        int delay = (client.currentScreen instanceof HandledScreen) ? 0 : cfg.getEffectiveSlotDelay();
         boolean pauseSprint = cfg.getEffectivePauseSprint();
         freezeEnabled = cfg.getEffectiveFreezeMovement();
 
