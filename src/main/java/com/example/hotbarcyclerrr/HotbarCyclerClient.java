@@ -5,14 +5,19 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
-import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Identifier;
-import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class HotbarCyclerClient implements ClientModInitializer {
 
@@ -22,76 +27,204 @@ public class HotbarCyclerClient implements ClientModInitializer {
     // ── Keybindings ───────────────────────────────────────────────────────────
     private static KeyBinding nextHotbarKey;
     private static KeyBinding prevHotbarKey;
+    private static KeyBinding returnFixedKey;
     private static KeyBinding openSettingsKey;
     private static KeyBinding toggleRowIndicatorKey;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
     private static int currentPage = 0;
     private static boolean isRowSwapped = false;
-    private static boolean wasInScreen = false;
-    private static boolean wasNextDown = false;
-    private static boolean wasPrevDown = false;
-
     private static boolean rowIndicatorVisible = true;
+    private static boolean freezeEnabled = true;
+    private static int freezeTicks = 0;
+    private static boolean wasHandledScreen = false;
 
-    // ── Getters ───────────────────────────────────────────────────────────────
+    public record SwapStep(int slotId, int button) {}
+
+    private static class ClientTransition {
+        final List<SwapStep> steps;
+        final int targetPage;
+        final int delayTicks;
+        int currentStep = 0;
+        int ticksRemaining = 0;
+
+        ClientTransition(List<SwapStep> steps, int targetPage, int delayTicks) {
+            this.steps = steps;
+            this.targetPage = targetPage;
+            this.delayTicks = Math.max(0, delayTicks);
+            this.ticksRemaining = 0;
+        }
+    }
+
+    private static ClientTransition activeTransition = null;
+
+    public static boolean isMovementFrozen() {
+        if (!freezeEnabled) return false;
+        return activeTransition != null || freezeTicks > 0;
+    }
+
+    public static boolean isTransitioning() {
+        return activeTransition != null;
+    }
+
     public static int     getCurrentPage()             { return currentPage; }
     public static boolean isRowSwapped()               { return isRowSwapped; }
     public static boolean isRowIndicatorVisible()      { return rowIndicatorVisible; }
 
     public static KeyBinding getNextHotbarKey() { return nextHotbarKey; }
     public static KeyBinding getPrevHotbarKey() { return prevHotbarKey; }
+    public static KeyBinding getReturnFixedKey() { return returnFixedKey; }
+
+    private static int getContainerSlotId(MinecraftClient client, int playerInvIndex) {
+        if (client != null && client.player != null && client.player.currentScreenHandler != null) {
+            for (Slot slot : client.player.currentScreenHandler.slots) {
+                if (slot.inventory == client.player.getInventory() && slot.getIndex() == playerInvIndex) {
+                    return slot.id;
+                }
+            }
+        }
+        return (client != null && client.currentScreen == null) ? playerInvIndex : -1;
+    }
+
+    private static List<SwapStep> buildSwapSteps(MinecraftClient client, int fromPage, int toPage) {
+        List<SwapStep> steps = new ArrayList<>();
+        if (fromPage >= 1 && fromPage <= 3) {
+            for (int col = 0; col < 9; col++) {
+                int slotId = getContainerSlotId(client, fromPage * 9 + col);
+                if (slotId >= 0) {
+                    steps.add(new SwapStep(slotId, col));
+                }
+            }
+        }
+        if (toPage >= 1 && toPage <= 3) {
+            for (int col = 0; col < 9; col++) {
+                int slotId = getContainerSlotId(client, toPage * 9 + col);
+                if (slotId >= 0) {
+                    steps.add(new SwapStep(slotId, col));
+                }
+            }
+        }
+        return steps;
+    }
+
+    private static void executeStep(MinecraftClient client, SwapStep step) {
+        if (client == null || client.interactionManager == null || client.player == null) return;
+        int syncId = client.player.currentScreenHandler != null ? client.player.currentScreenHandler.syncId : 0;
+        client.interactionManager.clickSlot(syncId, step.slotId(), step.button(), SlotActionType.SWAP, client.player);
+    }
+
+    private static void sendStopSprint(ClientPlayerEntity player) {
+        if (player != null && player.networkHandler != null) {
+            player.setSprinting(false);
+            player.networkHandler.sendPacket(new ClientCommandC2SPacket(
+                    player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
+        }
+    }
+
+    private static void sendCloseInventoryPacket(ClientPlayerEntity player) {
+        if (player != null && player.networkHandler != null) {
+            player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(0));
+        }
+    }
+
+    private static void startClientTransition(MinecraftClient client, List<SwapStep> steps, int targetPage, int delayTicks, boolean pauseSprint, boolean freeze) {
+        if (client.player == null || steps.isEmpty()) return;
+        if (pauseSprint) {
+            sendStopSprint(client.player);
+        }
+        if (freeze) {
+            var vel = client.player.getVelocity();
+            client.player.setVelocity(0.0, Math.min(0.0, vel.y), 0.0);
+        }
+        activeTransition = new ClientTransition(steps, targetPage, delayTicks);
+        executeStep(client, steps.get(0));
+        activeTransition.currentStep = 1;
+        activeTransition.ticksRemaining = delayTicks;
+    }
+
+    private static void tickClientTransition(MinecraftClient client) {
+        if (activeTransition == null || client.player == null) return;
+
+        if (activeTransition.ticksRemaining > 0) {
+            activeTransition.ticksRemaining--;
+            return;
+        }
+
+        if (activeTransition.currentStep < activeTransition.steps.size()) {
+            executeStep(client, activeTransition.steps.get(activeTransition.currentStep));
+            activeTransition.currentStep++;
+            activeTransition.ticksRemaining = activeTransition.delayTicks;
+        }
+
+        if (activeTransition.currentStep >= activeTransition.steps.size()) {
+            currentPage = activeTransition.targetPage;
+            isRowSwapped = (currentPage != 0);
+            if (client.currentScreen == null) {
+                sendCloseInventoryPacket(client.player);
+            }
+            activeTransition = null;
+            if (freezeEnabled) {
+                freezeTicks = 1;
+            }
+        }
+    }
+
+    public static void finishClientTransitionIfRunning(MinecraftClient client) {
+        if (activeTransition != null && client != null && client.player != null) {
+            while (activeTransition.currentStep < activeTransition.steps.size()) {
+                executeStep(client, activeTransition.steps.get(activeTransition.currentStep));
+                activeTransition.currentStep++;
+            }
+            currentPage = activeTransition.targetPage;
+            isRowSwapped = (currentPage != 0);
+            if (client.currentScreen == null) {
+                sendCloseInventoryPacket(client.player);
+            }
+            activeTransition = null;
+            freezeTicks = 0;
+        }
+    }
 
     public static void cycleHotbar(boolean next) {
-        int oldPage = currentPage;
-        if (next) {
-            currentPage = (currentPage + 1) % 4;
-        } else {
-            currentPage = (currentPage - 1 + 4) % 4;
-        }
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player != null && client.currentScreen == null) {
-            if (oldPage != 0) swapLocalRowWithHotbar(client.player, oldPage);
-            if (currentPage != 0) swapLocalRowWithHotbar(client.player, currentPage);
-            isRowSwapped = (currentPage != 0);
-            ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
-        }
+        if (isTransitioning()) return;
+        int target = next ? (currentPage + 1) % 4 : (currentPage - 1 + 4) % 4;
+        setHotbarRow(target);
     }
 
     public static void setHotbarRow(int targetRow) {
+        if (isTransitioning()) return;
         if (targetRow < 0 || targetRow > 3 || targetRow == currentPage) return;
-        int oldPage = currentPage;
-        currentPage = targetRow;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player != null && client.currentScreen == null) {
-            if (oldPage != 0) swapLocalRowWithHotbar(client.player, oldPage);
-            if (currentPage != 0) swapLocalRowWithHotbar(client.player, currentPage);
+        if (client.player == null) return;
+        if (client.currentScreen != null && !(client.currentScreen instanceof HandledScreen)) return;
+
+        HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+        int delay = cfg.getEffectiveSlotDelay();
+        boolean pauseSprint = cfg.getEffectivePauseSprint();
+        freezeEnabled = cfg.getEffectiveFreezeMovement();
+
+        int oldPage = currentPage;
+        List<SwapStep> steps = buildSwapSteps(client, oldPage, targetRow);
+        if (steps.isEmpty()) return;
+
+        if (delay <= 0) {
+            if (pauseSprint) sendStopSprint(client.player);
+            if (freezeEnabled && client.currentScreen == null) {
+                var vel = client.player.getVelocity();
+                client.player.setVelocity(0.0, Math.min(0.0, vel.y), 0.0);
+                freezeTicks = 1;
+            }
+            for (SwapStep step : steps) {
+                executeStep(client, step);
+            }
+            currentPage = targetRow;
             isRowSwapped = (currentPage != 0);
-            ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
+            if (client.currentScreen == null) {
+                sendCloseInventoryPacket(client.player);
+            }
+        } else {
+            startClientTransition(client, steps, targetRow, delay, pauseSprint, freezeEnabled && client.currentScreen == null);
         }
-    }
-
-    public static void swapLocalRowWithHotbar(ClientPlayerEntity player, int page) {
-        if (player == null || page < 1 || page > 3) return;
-        int targetStart = page * 9;
-        var stacks = player.getInventory().getMainStacks();
-        for (int i = 0; i < 9; i++) {
-            ItemStack temp = stacks.get(i);
-            stacks.set(i, stacks.get(targetStart + i));
-            stacks.set(targetStart + i, temp);
-        }
-    }
-
-    private static boolean isKeyBindingDown(MinecraftClient client, KeyBinding keyBinding) {
-        if (keyBinding == null || keyBinding.isUnbound() || client.getWindow() == null) return false;
-        InputUtil.Key boundKey = KeyBindingHelper.getBoundKeyOf(keyBinding);
-        long handle = client.getWindow().getHandle();
-        if (boundKey.getCategory() == InputUtil.Type.KEYSYM) {
-            return GLFW.glfwGetKey(handle, boundKey.getCode()) == GLFW.GLFW_PRESS;
-        } else if (boundKey.getCategory() == InputUtil.Type.MOUSE) {
-            return GLFW.glfwGetMouseButton(handle, boundKey.getCode()) == GLFW.GLFW_PRESS;
-        }
-        return false;
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -100,58 +233,62 @@ public class HotbarCyclerClient implements ClientModInitializer {
     public void onInitializeClient() {
         HotbarCyclerConfig.get();
 
-        nextHotbarKey = reg("key.hotbarcyclerrr.next");
-        prevHotbarKey = reg("key.hotbarcyclerrr.prev");
-        openSettingsKey          = reg("key.hotbarcyclerrr.open_settings");
-        toggleRowIndicatorKey    = reg("key.hotbarcyclerrr.toggle_row_indicator");
+        nextHotbarKey         = reg("key.hotbarcyclerrr.next");
+        prevHotbarKey         = reg("key.hotbarcyclerrr.prev");
+        returnFixedKey        = reg("key.hotbarcyclerrr.return_fixed");
+        openSettingsKey       = reg("key.hotbarcyclerrr.open_settings");
+        toggleRowIndicatorKey = reg("key.hotbarcyclerrr.toggle_row_indicator");
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            currentPage             = 0;
-            isRowSwapped            = false;
-            wasInScreen             = false;
-            wasNextDown             = false;
-            wasPrevDown             = false;
-            rowIndicatorVisible  = HotbarCyclerConfig.get().showRowIndicator;
+            currentPage         = 0;
+            isRowSwapped        = false;
+            activeTransition    = null;
+            freezeTicks         = 0;
+            wasHandledScreen    = false;
+            rowIndicatorVisible = HotbarCyclerConfig.get().showRowIndicator;
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
 
-            // Synchronize static inventory: restore to static row 0 inside menus,
-            // re-apply active hotbar row outside menus.
-            boolean inScreen = (client.currentScreen != null);
-            if (inScreen && !wasInScreen) {
-                if (currentPage != 0 && isRowSwapped) {
-                    swapLocalRowWithHotbar(client.player, currentPage);
-                    isRowSwapped = false;
-                    ClientPlayNetworking.send(new CycleHotbarPayload(0));
+            if (freezeTicks > 0) {
+                freezeTicks--;
+            }
+
+            tickClientTransition(client);
+
+            boolean inHandledScreen = (client.currentScreen instanceof HandledScreen);
+            HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+
+            if (inHandledScreen) {
+                if (!wasHandledScreen) {
+                    wasHandledScreen = true;
+                    if (isTransitioning()) {
+                        finishClientTransitionIfRunning(client);
+                    }
+                    if (cfg.revertToFixedSlots && currentPage != 0) {
+                        setHotbarRow(0);
+                    }
                 }
-            } else if (!inScreen && wasInScreen) {
-                if (currentPage != 0 && !isRowSwapped) {
-                    swapLocalRowWithHotbar(client.player, currentPage);
-                    isRowSwapped = true;
-                    ClientPlayNetworking.send(new CycleHotbarPayload(currentPage));
+            } else {
+                if (wasHandledScreen) {
+                    wasHandledScreen = false;
+                    finishClientTransitionIfRunning(client);
                 }
             }
-            wasInScreen = inScreen;
 
-            // Process keybinds both in-screen (via low-level GLFW polling) and outside screen
-            if (inScreen) {
-                boolean nextDown = isKeyBindingDown(client, nextHotbarKey);
-                if (nextDown && !wasNextDown) cycleHotbar(true);
-                wasNextDown = nextDown;
-
-                boolean prevDown = isKeyBindingDown(client, prevHotbarKey);
-                if (prevDown && !wasPrevDown) cycleHotbar(false);
-                wasPrevDown = prevDown;
-            } else {
-                wasNextDown = false;
-                wasPrevDown = false;
+            boolean inScreen = (client.currentScreen != null);
+            if (!inScreen) {
                 while (nextHotbarKey.wasPressed()) {
                     cycleHotbar(true);
                 }
                 while (prevHotbarKey.wasPressed()) {
                     cycleHotbar(false);
+                }
+                while (returnFixedKey.wasPressed()) {
+                    if (currentPage != 0) {
+                        setHotbarRow(0);
+                    }
                 }
             }
 

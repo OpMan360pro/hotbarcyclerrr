@@ -12,15 +12,29 @@ import net.minecraft.util.Identifier;
  *   2 = Inventory row 2 (slots 18-26)
  *   3 = Inventory row 3 (slots 27-35)
  */
-public record CycleHotbarPayload(int targetRow) implements CustomPayload {
+public record CycleHotbarPayload(int targetRow, int slotDelayTicks, boolean pauseSprint, boolean freezeMovement) implements CustomPayload {
+
+    public CycleHotbarPayload(int targetRow) {
+        this(targetRow, 0, false, false);
+    }
 
     public static final CustomPayload.Id<CycleHotbarPayload> ID =
             new CustomPayload.Id<>(Identifier.of("hotbarcyclerrr", "cycle"));
 
     public static final PacketCodec<PacketByteBuf, CycleHotbarPayload> CODEC =
             PacketCodec.of(
-                    (value, buf) -> buf.writeInt(value.targetRow()),
-                    buf -> new CycleHotbarPayload(buf.readInt())
+                    (value, buf) -> {
+                        buf.writeInt(value.targetRow());
+                        buf.writeInt(value.slotDelayTicks());
+                        buf.writeBoolean(value.pauseSprint());
+                        buf.writeBoolean(value.freezeMovement());
+                    },
+                    buf -> new CycleHotbarPayload(
+                            buf.readInt(),
+                            buf.readInt(),
+                            buf.readBoolean(),
+                            buf.readBoolean()
+                    )
             );
 
     @Override

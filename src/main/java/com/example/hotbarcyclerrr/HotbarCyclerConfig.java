@@ -12,13 +12,44 @@ import java.nio.file.Path;
 
 public class HotbarCyclerConfig {
 
+    // ── Anti-Cheat Compatibility ──────────────────────────────────────────────
+    public AntiCheatMode antiCheatMode         = AntiCheatMode.NONE;
+    public int           customSlotDelay       = 1;
+    public boolean       customPauseSprint     = true;
+    public boolean       customFreezeMovement  = true;
+
     // ── Row Indicator ─────────────────────────────────────────────────────────
     public boolean showRowIndicator        = true;
     public boolean seamlessHotbar          = false;
+    public boolean revertToFixedSlots      = false;
     public int     rowIndicatorOffsetX     = 0;
     public int     rowIndicatorOffsetY     = 0;
     public int     rowIndicatorSquareW     = 8;
     public int     rowIndicatorSquareH     = 8;
+
+    public int getEffectiveSlotDelay() {
+        if (antiCheatMode == null) return 0;
+        if (antiCheatMode == AntiCheatMode.CUSTOM) {
+            return Math.max(0, customSlotDelay);
+        }
+        return antiCheatMode.getDelayTicks();
+    }
+
+    public boolean getEffectivePauseSprint() {
+        if (antiCheatMode == null) return false;
+        if (antiCheatMode == AntiCheatMode.CUSTOM) {
+            return customPauseSprint;
+        }
+        return antiCheatMode.isPauseSprint();
+    }
+
+    public boolean getEffectiveFreezeMovement() {
+        if (antiCheatMode == null) return false;
+        if (antiCheatMode == AntiCheatMode.CUSTOM) {
+            return customFreezeMovement;
+        }
+        return antiCheatMode.isFreezeMovement();
+    }
 
     // ── Persistence ──────────────────────────────────────────────────────────
     private static final Gson   GSON      = new GsonBuilder().setPrettyPrinting().create();
@@ -35,7 +66,10 @@ public class HotbarCyclerConfig {
         if (Files.exists(path)) {
             try (Reader r = Files.newBufferedReader(path)) {
                 HotbarCyclerConfig cfg = GSON.fromJson(r, HotbarCyclerConfig.class);
-                if (cfg != null) return cfg;
+                if (cfg != null) {
+                    if (cfg.antiCheatMode == null) cfg.antiCheatMode = AntiCheatMode.NONE;
+                    return cfg;
+                }
             } catch (IOException | com.google.gson.JsonParseException e) {
                 HotbarCyclerMod.LOGGER.warn("Failed to load config, using defaults: {}", e.getMessage());
             }

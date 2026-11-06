@@ -8,6 +8,27 @@ import net.minecraft.screen.slot.Slot;
 
 public class HotbarCyclerUtil {
 
+    public static void swapSingleSlot(PlayerInventory inv, int fromRow, int toRow, int slotIndex) {
+        if (inv == null || slotIndex < 0 || slotIndex >= 9) return;
+        var stacks = inv.getMainStacks();
+        if (fromRow >= 1 && fromRow <= 3) {
+            int fromIdx = fromRow * 9 + slotIndex;
+            if (fromIdx < stacks.size() && slotIndex < stacks.size()) {
+                ItemStack temp = stacks.get(slotIndex);
+                stacks.set(slotIndex, stacks.get(fromIdx));
+                stacks.set(fromIdx, temp);
+            }
+        }
+        if (toRow >= 1 && toRow <= 3) {
+            int toIdx = toRow * 9 + slotIndex;
+            if (toIdx < stacks.size() && slotIndex < stacks.size()) {
+                ItemStack temp = stacks.get(slotIndex);
+                stacks.set(slotIndex, stacks.get(toIdx));
+                stacks.set(toIdx, temp);
+            }
+        }
+    }
+
     public static void drawIndicatorCell(DrawContext ctx, int x, int y, int w, int h, boolean active) {
         // Slot background
         ctx.fill(x, y, x + w, y + h, 0x88000000);

@@ -40,6 +40,7 @@ Default category: **Hotbar Cyclerrr** (Options → Controls → Key Binds):
 |---|---|---|
 | **Next Hotbar Row** | Unbound | Cycles to the next inventory row |
 | **Previous Hotbar Row** | Unbound | Cycles to the previous inventory row |
+| **Return to Fixed Slots** | Unbound | Returns items back to their default fixed layout |
 | **Open Settings** | Unbound | Opens mod configuration screen |
 | **Toggle Row Indicator** | Unbound | Toggles HUD indicator visibility |
 
