@@ -1,4 +1,4 @@
-package com.example.hotbarcycler;
+package com.example.hotbarcyclerrr;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.player.PlayerInventory;

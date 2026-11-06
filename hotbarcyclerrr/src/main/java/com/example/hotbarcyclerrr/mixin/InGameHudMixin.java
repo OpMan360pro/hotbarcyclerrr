@@ -1,8 +1,8 @@
-package com.example.hotbarcycler.mixin;
+package com.example.hotbarcyclerrr.mixin;
 
-import com.example.hotbarcycler.HotbarCyclerClient;
-import com.example.hotbarcycler.HotbarCyclerConfig;
-import com.example.hotbarcycler.HotbarCyclerUtil;
+import com.example.hotbarcyclerrr.HotbarCyclerClient;
+import com.example.hotbarcyclerrr.HotbarCyclerConfig;
+import com.example.hotbarcyclerrr.HotbarCyclerUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
@@ -56,7 +56,7 @@ public abstract class InGameHudMixin {
             target = "Lnet/minecraft/entity/player/PlayerInventory;getStack(I)Lnet/minecraft/item/ItemStack;"
         )
     )
-    private ItemStack hotbarcycler$redirectHotbarSlot(PlayerInventory inv, int slot) {
+    private ItemStack hotbarcyclerrr$redirectHotbarSlot(PlayerInventory inv, int slot) {
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
         if (cfg != null && cfg.seamlessHotbar && slot >= 0 && slot < 9) {
             int page = HotbarCyclerClient.getCurrentPage();
@@ -73,7 +73,7 @@ public abstract class InGameHudMixin {
     }
 
     @Inject(method = "renderHotbar", at = @At("TAIL"))
-    private void hotbarcycler$onTail(DrawContext ctx,
+    private void hotbarcyclerrr$onTail(DrawContext ctx,
                                      RenderTickCounter tickCounter,
                                      CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -86,11 +86,11 @@ public abstract class InGameHudMixin {
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
 
         if (HotbarCyclerClient.isRowIndicatorVisible())
-            hotbarcycler$drawRowIndicator(ctx, hotbarLeft, hotbarTop, cfg);
+            hotbarcyclerrr$drawRowIndicator(ctx, hotbarLeft, hotbarTop, cfg);
     }
 
     @Unique
-    private void hotbarcycler$drawRowIndicator(DrawContext ctx,
+    private void hotbarcyclerrr$drawRowIndicator(DrawContext ctx,
                                                int hotbarLeft, int hotbarTop,
                                                HotbarCyclerConfig cfg) {
         int sqW    = Math.max(4, cfg.rowIndicatorSquareW);

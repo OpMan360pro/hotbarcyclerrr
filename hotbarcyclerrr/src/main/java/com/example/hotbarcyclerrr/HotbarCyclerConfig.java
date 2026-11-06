@@ -1,4 +1,4 @@
-package com.example.hotbarcycler;
+package com.example.hotbarcyclerrr;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -22,7 +22,7 @@ public class HotbarCyclerConfig {
 
     // ── Persistence ──────────────────────────────────────────────────────────
     private static final Gson   GSON      = new GsonBuilder().setPrettyPrinting().create();
-    private static final String FILE_NAME = "hotbarcycler.json";
+    private static final String FILE_NAME = "hotbarcyclerrr.json";
     private static HotbarCyclerConfig instance;
 
     public static HotbarCyclerConfig get() {

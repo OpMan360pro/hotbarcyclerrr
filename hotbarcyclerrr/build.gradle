@@ -21,7 +21,7 @@ fabricApi {
 loom {
     mixin {
         useLegacyMixinAp = true
-        defaultRefmapName.set("hotbarcycler-refmap.json")
+        defaultRefmapName.set("hotbarcyclerrr-refmap.json")
     }
 }
 

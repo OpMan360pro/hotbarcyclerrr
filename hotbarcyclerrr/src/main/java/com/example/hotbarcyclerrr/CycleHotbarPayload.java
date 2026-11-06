@@ -1,4 +1,4 @@
-package com.example.hotbarcycler;
+package com.example.hotbarcyclerrr;
 
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
@@ -15,7 +15,7 @@ import net.minecraft.util.Identifier;
 public record CycleHotbarPayload(int targetRow) implements CustomPayload {
 
     public static final CustomPayload.Id<CycleHotbarPayload> ID =
-            new CustomPayload.Id<>(Identifier.of("hotbarcycler", "cycle"));
+            new CustomPayload.Id<>(Identifier.of("hotbarcyclerrr", "cycle"));
 
     public static final PacketCodec<PacketByteBuf, CycleHotbarPayload> CODEC =
             PacketCodec.of(

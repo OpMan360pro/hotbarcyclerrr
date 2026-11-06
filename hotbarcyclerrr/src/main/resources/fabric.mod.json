@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "hotbarcycler",
+  "id": "hotbarcyclerrr",
   "version": "${version}",
-  "name": "Hotbar Cycler",
+  "name": "Hotbar Cyclerrr",
   "description": "Cycle through your inventory rows as hotbars using assignable keybinds.",
   "authors": [],
   "contact": {},
@@ -10,17 +10,17 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.example.hotbarcycler.HotbarCyclerMod"
+      "com.example.hotbarcyclerrr.HotbarCyclerMod"
     ],
     "client": [
-      "com.example.hotbarcycler.HotbarCyclerClient"
+      "com.example.hotbarcyclerrr.HotbarCyclerClient"
     ],
     "modmenu": [
-      "com.example.hotbarcycler.ModMenuIntegration"
+      "com.example.hotbarcyclerrr.ModMenuIntegration"
     ]
   },
   "mixins": [
-    "hotbarcycler.mixins.json"
+    "hotbarcyclerrr.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.0",

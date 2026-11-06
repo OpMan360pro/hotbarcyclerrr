@@ -1,6 +1,6 @@
-package com.example.hotbarcycler;
+package com.example.hotbarcyclerrr;
 
-import com.example.hotbarcycler.screen.HotbarCyclerConfigScreen;
+import com.example.hotbarcyclerrr.screen.HotbarCyclerConfigScreen;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 

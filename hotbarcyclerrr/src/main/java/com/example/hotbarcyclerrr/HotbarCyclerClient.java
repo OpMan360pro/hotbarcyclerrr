@@ -1,6 +1,6 @@
-package com.example.hotbarcycler;
+package com.example.hotbarcyclerrr;
 
-import com.example.hotbarcycler.screen.HotbarCyclerConfigScreen;
+import com.example.hotbarcyclerrr.screen.HotbarCyclerConfigScreen;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -17,7 +17,7 @@ import org.lwjgl.glfw.GLFW;
 public class HotbarCyclerClient implements ClientModInitializer {
 
     private static final KeyBinding.Category CATEGORY =
-            KeyBinding.Category.create(Identifier.of("hotbarcycler", "hotbarcycler"));
+            KeyBinding.Category.create(Identifier.of("hotbarcyclerrr", "hotbarcyclerrr"));
 
     // ── Keybindings ───────────────────────────────────────────────────────────
     private static KeyBinding nextHotbarKey;
@@ -100,10 +100,10 @@ public class HotbarCyclerClient implements ClientModInitializer {
     public void onInitializeClient() {
         HotbarCyclerConfig.get();
 
-        nextHotbarKey = reg("key.hotbarcycler.next");
-        prevHotbarKey = reg("key.hotbarcycler.prev");
-        openSettingsKey          = reg("key.hotbarcycler.open_settings");
-        toggleRowIndicatorKey    = reg("key.hotbarcycler.toggle_row_indicator");
+        nextHotbarKey = reg("key.hotbarcyclerrr.next");
+        prevHotbarKey = reg("key.hotbarcyclerrr.prev");
+        openSettingsKey          = reg("key.hotbarcyclerrr.open_settings");
+        toggleRowIndicatorKey    = reg("key.hotbarcyclerrr.toggle_row_indicator");
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             currentPage             = 0;

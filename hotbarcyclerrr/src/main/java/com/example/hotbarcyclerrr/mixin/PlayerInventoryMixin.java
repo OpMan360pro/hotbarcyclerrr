@@ -1,7 +1,7 @@
-package com.example.hotbarcycler.mixin;
+package com.example.hotbarcyclerrr.mixin;
 
-import com.example.hotbarcycler.HotbarCyclerClient;
-import com.example.hotbarcycler.HotbarCyclerConfig;
+import com.example.hotbarcyclerrr.HotbarCyclerClient;
+import com.example.hotbarcyclerrr.HotbarCyclerConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
@@ -20,7 +20,7 @@ public abstract class PlayerInventoryMixin {
     @Shadow private int selectedSlot;
 
     @Inject(method = "getSelectedStack", at = @At("HEAD"), cancellable = true)
-    private void hotbarcycler$getVisualSelectedStack(CallbackInfoReturnable<ItemStack> cir) {
+    private void hotbarcyclerrr$getVisualSelectedStack(CallbackInfoReturnable<ItemStack> cir) {
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
         if (cfg != null && cfg.seamlessHotbar) {
             int page = HotbarCyclerClient.getCurrentPage();

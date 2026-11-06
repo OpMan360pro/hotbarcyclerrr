@@ -1,4 +1,4 @@
-package com.example.hotbarcycler;
+package com.example.hotbarcyclerrr;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class HotbarCyclerMod implements ModInitializer {
 
-    public static final Logger LOGGER = LoggerFactory.getLogger("hotbarcycler");
+    public static final Logger LOGGER = LoggerFactory.getLogger("hotbarcyclerrr");
     private static final Map<UUID, Integer> activeRows = new ConcurrentHashMap<>();
 
     @Override
@@ -38,7 +38,7 @@ public class HotbarCyclerMod implements ModInitializer {
             }
         });
 
-        LOGGER.info("Hotbar Cycler initialised.");
+        LOGGER.info("Hotbar Cyclerrr initialised.");
     }
 
     // =========================================================================

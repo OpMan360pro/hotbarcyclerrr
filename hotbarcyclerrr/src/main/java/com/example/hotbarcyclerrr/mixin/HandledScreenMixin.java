@@ -1,6 +1,6 @@
-package com.example.hotbarcycler.mixin;
+package com.example.hotbarcyclerrr.mixin;
 
-import com.example.hotbarcycler.HotbarCyclerUtil;
+import com.example.hotbarcyclerrr.HotbarCyclerUtil;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -25,7 +25,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     }
 
     @Inject(method = "render", at = @At("TAIL"))
-    private void hotbarcycler$onRenderTail(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void hotbarcyclerrr$onRenderTail(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!((Object)this instanceof InventoryScreen)) {
             HotbarCyclerUtil.drawActiveRowHighlight(this.handler, context, this.x, this.y);
         }

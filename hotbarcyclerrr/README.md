@@ -1,4 +1,4 @@
-# Hotbar Cycler — Fabric Mod for Minecraft 1.21.10
+# Hotbar Cyclerrr — Fabric Mod for Minecraft 1.21.10
 
 Cycle through all four rows of your player inventory as if each one were a hotbar, using two assignable keybindings.
 
@@ -36,7 +36,7 @@ An action-bar message ("Hotbar Row X / 4") briefly confirms which row is active 
 ## Keybinding Setup
 
 1. Open **Options → Controls → Key Binds**.
-2. Search for **"Hotbar Cycler"**.
+2. Search for **"Hotbar Cyclerrr"**.
 3. Assign **Next Hotbar Row** and **Previous Hotbar Row** to your preferred keys.
 
 Both bindings are **unbound by default**.
@@ -47,9 +47,9 @@ Both bindings are **unbound by default**.
 
 ```bash
 git clone <this-repo>
-cd hotbarcycler
+cd hotbarcyclerrr
 ./gradlew build
-# Output: build/libs/hotbarcycler-1.0.0.jar
+# Output: build/libs/hotbarcyclerrr-1.0.0.jar
 ```
 
 Requires JDK 21+.
@@ -69,7 +69,7 @@ Works in **singleplayer** and on **multiplayer servers** that have the mod insta
 ## Technical Notes
 
 **Why does the server also need this mod for multiplayer?**  
-Inventory swaps must happen server-side so they persist and sync correctly. The client sends a lightweight C2S packet (`hotbarcycler:cycle`) containing the target slot row; the server performs the 9-slot swap and syncs the result back.
+Inventory swaps must happen server-side so they persist and sync correctly. The client sends a lightweight C2S packet (`hotbarcyclerrr:cycle`) containing the target slot row; the server performs the 9-slot swap and syncs the result back.
 
 **Will my items be safe if I log out mid-cycle?**  
 Yes. The swap is a real inventory modification, so the current state is always saved correctly.

@@ -1,6 +1,6 @@
-package com.example.hotbarcycler.screen;
+package com.example.hotbarcyclerrr.screen;
 
-import com.example.hotbarcycler.HotbarCyclerConfig;
+import com.example.hotbarcyclerrr.HotbarCyclerConfig;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -40,7 +40,7 @@ public class HotbarCyclerConfigScreen extends Screen {
     private final List<LabelEntry> postLabels = new ArrayList<>();
 
     public HotbarCyclerConfigScreen(Screen parent) {
-        super(Text.literal("Hotbar Cycler Settings"));
+        super(Text.literal("Hotbar Cyclerrr Settings"));
         this.parent = parent;
     }
 
