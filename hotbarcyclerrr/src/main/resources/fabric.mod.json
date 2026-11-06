@@ -3,9 +3,14 @@
   "id": "hotbarcyclerrr",
   "version": "${version}",
   "name": "Hotbar Cyclerrr",
-  "description": "Cycle through your inventory rows as hotbars using assignable keybinds.",
-  "authors": [],
-  "contact": {},
+  "description": "Cycle through your inventory rows as hotbars using assignable keybinds. Based on Hotbar Cycler by ceaweed.",
+  "authors": [
+    "ceaweed (original author)",
+    "hotbarcyclerrr contributors"
+  ],
+  "contact": {
+    "sources": "https://github.com/ceaweed/hotbarcycler"
+  },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
