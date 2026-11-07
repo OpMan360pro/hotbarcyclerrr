@@ -9,11 +9,11 @@ Based on [Hotbar Cycler](https://github.com/ceaweed/hotbarcycler) by [ceaweed](h
 ## Features
 
 - **Inventory Row Cycling**: Quick-switch between the hotbar and any of the 3 main inventory rows.
-- **HUD Row Indicator**: Visual indicator next to the hotbar showing which row is currently active (customizable position and size).
-- **Inventory Screen Highlight**: Clear visual frame around the currently active row when viewing player inventory or containers.
-- **In-Menu Hotkeys**: Cycle rows even while inside inventory and container screens.
-- **Seamless Hotbar (Optional)**: Smooth visual sync keeping the hotbar appearance consistent.
-- **Configuration Screen**: Accessible via ModMenu or dedicated keybinding.
+- **HUD Row Indicator**: Visual indicator next to the hotbar showing which row is active. Supports styles (`Default`, `Minimal`, `Dots`, `Accent` with custom color), custom offset, and size.
+- **Inventory Screen Highlight**: Highlight frame and tint over the active row in container and player screens. Fully customizable colors and opacity via RGB sliders with live preview.
+- **Anti-Cheat Settings**: Configurable swap delay, sprint pausing, input blocking, and movement freezing for server compatibility.
+- **Seamless Hotbar (Optional)**: Smooth visual client-side sync.
+- **Configuration Screen**: In-game settings accessible via ModMenu or dedicated keybinding.
 
 ---
 
