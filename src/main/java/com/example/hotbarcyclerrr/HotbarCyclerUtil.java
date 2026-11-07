@@ -29,19 +29,68 @@ public class HotbarCyclerUtil {
         }
     }
 
+    public static void outline(DrawContext ctx, int x, int y, int w, int h, int color) {
+        ctx.fill(x,         y,         x + w, y + 1,     color);
+        ctx.fill(x,         y + h - 1, x + w, y + h,     color);
+        ctx.fill(x,         y,         x + 1, y + h,     color);
+        ctx.fill(x + w - 1, y,         x + w, y + h,     color);
+    }
+
     public static void drawIndicatorCell(DrawContext ctx, int x, int y, int w, int h, boolean active) {
-        // Slot background
-        ctx.fill(x, y, x + w, y + h, 0x88000000);
+        drawIndicatorCell(ctx, x, y, w, h, active, 0, RowIndicatorStyle.DEFAULT);
+    }
 
-        // Slot beveled borders (vanilla hotbar slot styling)
-        ctx.fill(x,         y,         x + w,     y + 1,     0xFF373737); // top dark
-        ctx.fill(x,         y,         x + 1,     y + h,     0xFF373737); // left dark
-        ctx.fill(x + w - 1, y,         x + w,     y + h,     0xFF8B8B8B); // right highlight
-        ctx.fill(x,         y + h - 1, x + w,     y + h,     0xFF8B8B8B); // bottom highlight
+    public static void drawIndicatorCell(DrawContext ctx, int x, int y, int w, int h, boolean active, int rowId, RowIndicatorStyle style) {
+        if (style == null) style = RowIndicatorStyle.DEFAULT;
 
-        if (active) {
-            int pad = Math.max(1, Math.min(w, h) >= 8 ? 2 : 1);
-            ctx.fill(x + pad, y + pad, x + w - pad, y + h - pad, 0xFFFFFFFF);
+        switch (style) {
+            case MINIMAL -> {
+                if (active) {
+                    ctx.fill(x, y, x + w, y + h, 0xEEFFFFFF);
+                    outline(ctx, x, y, w, h, 0xFF222222);
+                } else {
+                    ctx.fill(x, y, x + w, y + h, 0x44000000);
+                    outline(ctx, x, y, w, h, 0x66FFFFFF);
+                }
+            }
+            case DOTS -> {
+                ctx.fill(x, y, x + w, y + h, 0x33000000);
+                if (active) {
+                    int pad = Math.max(1, Math.min(w, h) / 4);
+                    ctx.fill(x + pad, y + pad, x + w - pad, y + h - pad, 0xFFFFFFFF);
+                } else {
+                    int pad = Math.max(2, Math.min(w, h) * 3 / 8);
+                    ctx.fill(x + pad, y + pad, x + w - pad, y + h - pad, 0x77FFFFFF);
+                }
+            }
+            case ACCENT -> {
+                HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+                int rgb = (cfg != null) ? cfg.getRowIndicatorAccentRgb() : 0x00AAFF;
+                if (active) {
+                    ctx.fill(x, y, x + w, y + h, (0x66 << 24) | rgb);
+                    outline(ctx, x, y, w, h, (0xFF << 24) | rgb);
+                    int pad = Math.max(1, Math.min(w, h) >= 8 ? 2 : 1);
+                    ctx.fill(x + pad, y + pad, x + w - pad, y + h - pad, (0xEE << 24) | rgb);
+                } else {
+                    ctx.fill(x, y, x + w, y + h, 0x44000000);
+                    outline(ctx, x, y, w, h, (0x44 << 24) | rgb);
+                }
+            }
+            case DEFAULT -> {
+                // Slot background
+                ctx.fill(x, y, x + w, y + h, 0x88000000);
+
+                // Slot beveled borders (vanilla hotbar slot styling)
+                ctx.fill(x,         y,         x + w,     y + 1,     0xFF373737); // top dark
+                ctx.fill(x,         y,         x + 1,     y + h,     0xFF373737); // left dark
+                ctx.fill(x + w - 1, y,         x + w,     y + h,     0xFF8B8B8B); // right highlight
+                ctx.fill(x,         y + h - 1, x + w,     y + h,     0xFF8B8B8B); // bottom highlight
+
+                if (active) {
+                    int pad = Math.max(1, Math.min(w, h) >= 8 ? 2 : 1);
+                    ctx.fill(x + pad, y + pad, x + w - pad, y + h - pad, 0xFFFFFFFF);
+                }
+            }
         }
     }
 
@@ -75,13 +124,21 @@ public class HotbarCyclerUtil {
             int boxW = (maxX - minX) + 2;
             int boxH = (maxY - minY) + 2;
 
-            // 2px solid white border around active row
-            context.fill(boxX - 1,        boxY - 1,        boxX + boxW + 1, boxY + 1,        0xFFFFFFFF);
-            context.fill(boxX - 1,        boxY + boxH - 1, boxX + boxW + 1, boxY + boxH + 1, 0xFFFFFFFF);
-            context.fill(boxX - 1,        boxY - 1,        boxX + 1,        boxY + boxH + 1, 0xFFFFFFFF);
-            context.fill(boxX + boxW - 1, boxY - 1,        boxX + boxW + 1, boxY + boxH + 1, 0xFFFFFFFF);
-            // Clearly visible translucent tint
-            context.fill(boxX + 1,        boxY + 1,        boxX + boxW - 1, boxY + boxH - 1, 0x35FFFFFF);
+            HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
+            int borderColor = (cfg != null) ? cfg.getHighlightBorderArgb() : 0xFFFFFFFF;
+            int fillColor   = (cfg != null) ? cfg.getHighlightFillArgb()   : 0x35FFFFFF;
+
+            if ((borderColor >>> 24) > 0) {
+                // 2px solid border around active row
+                context.fill(boxX - 1,        boxY - 1,        boxX + boxW + 1, boxY + 1,        borderColor);
+                context.fill(boxX - 1,        boxY + boxH - 1, boxX + boxW + 1, boxY + boxH + 1, borderColor);
+                context.fill(boxX - 1,        boxY - 1,        boxX + 1,        boxY + boxH + 1, borderColor);
+                context.fill(boxX + boxW - 1, boxY - 1,        boxX + boxW + 1, boxY + boxH + 1, borderColor);
+            }
+            if ((fillColor >>> 24) > 0) {
+                // Clearly visible translucent tint
+                context.fill(boxX + 1,        boxY + 1,        boxX + boxW - 1, boxY + boxH - 1, fillColor);
+            }
         }
     }
 

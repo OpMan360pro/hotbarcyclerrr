@@ -14,20 +14,71 @@ public class HotbarCyclerConfig {
 
     // ── Anti-Cheat Compatibility ──────────────────────────────────────────────
     public AntiCheatMode antiCheatMode         = AntiCheatMode.NONE;
+    public Integer       slotDelay             = null;
     public int           customSlotDelay       = 50;
     public boolean       customPauseSprint     = true;
     public boolean       customBlockInput      = true;
     public boolean       customFreezeMovement  = true;
 
     // ── Row Indicator ─────────────────────────────────────────────────────────
-    public boolean showRowIndicator        = true;
-    public boolean seamlessHotbar          = false;
-    public boolean revertToFixedSlots      = false;
-    public boolean revertSlotDelay         = false;
-    public int     rowIndicatorOffsetX     = 0;
-    public int     rowIndicatorOffsetY     = 0;
-    public int     rowIndicatorSquareW     = 8;
-    public int     rowIndicatorSquareH     = 8;
+    public boolean           showRowIndicator    = true;
+    public RowIndicatorStyle rowIndicatorStyle   = RowIndicatorStyle.DEFAULT;
+    public boolean           seamlessHotbar      = false;
+    public boolean           revertToFixedSlots  = false;
+    public boolean           revertSlotDelay     = false;
+    public int               rowIndicatorOffsetX = 0;
+    public int               rowIndicatorOffsetY = 0;
+    public int               rowIndicatorSquareW = 8;
+    public int               rowIndicatorSquareH = 8;
+    public String            rowIndicatorAccentColor = "00AAFF";
+
+    // ── Inventory Row Highlight ───────────────────────────────────────────────
+    public String highlightBorderColor   = "FFFFFF";
+    public int    highlightBorderOpacity = 100; // 0 - 100%
+    public String highlightFillColor     = "FFFFFF";
+    public int    highlightFillOpacity   = 21;  // 0 - 100% (~0x35 alpha)
+
+    public int getHighlightBorderArgb() {
+        return parseColor(highlightBorderColor, highlightBorderOpacity, 0x00FFFFFF, 255);
+    }
+
+    public int getHighlightFillArgb() {
+        return parseColor(highlightFillColor, highlightFillOpacity, 0x00FFFFFF, 53);
+    }
+
+    public int getRowIndicatorAccentRgb() {
+        return parseRgb(rowIndicatorAccentColor, 0x00AAFF);
+    }
+
+    public static int parseRgb(String hex, int defaultRgb) {
+        if (hex == null) return defaultRgb;
+        String clean = hex.replace("#", "").trim();
+        if (clean.isEmpty()) return defaultRgb;
+        try {
+            return (int) Long.parseLong(clean, 16) & 0x00FFFFFF;
+        } catch (Exception e) {
+            return defaultRgb;
+        }
+    }
+
+    private static int parseColor(String hex, int opacityPercent, int defaultRgb, int defaultAlpha) {
+        int rgb;
+        try {
+            if (hex != null && !hex.trim().isEmpty()) {
+                String clean = hex.replace("#", "").trim();
+                rgb = (int) Long.parseLong(clean, 16) & 0x00FFFFFF;
+            } else {
+                rgb = defaultRgb;
+            }
+        } catch (Exception e) {
+            rgb = defaultRgb;
+        }
+        int alpha = (opacityPercent >= 0 && opacityPercent <= 100)
+                ? Math.round(opacityPercent * 255.0f / 100.0f)
+                : defaultAlpha;
+        alpha = Math.max(0, Math.min(255, alpha));
+        return (alpha << 24) | rgb;
+    }
 
     public int getEffectiveSlotDelay() {
         if (antiCheatMode == null) return 0;
@@ -78,8 +129,14 @@ public class HotbarCyclerConfig {
                 HotbarCyclerConfig cfg = GSON.fromJson(r, HotbarCyclerConfig.class);
                 if (cfg != null) {
                     if (cfg.antiCheatMode == null) cfg.antiCheatMode = AntiCheatMode.NONE;
-                    if (cfg.customSlotDelay > 0 && cfg.customSlotDelay <= 5) {
-                        cfg.customSlotDelay *= 50;
+                    if (cfg.rowIndicatorStyle == null) cfg.rowIndicatorStyle = RowIndicatorStyle.DEFAULT;
+                    if (cfg.rowIndicatorAccentColor == null) cfg.rowIndicatorAccentColor = "00AAFF";
+                    if (cfg.highlightBorderColor == null) cfg.highlightBorderColor = "FFFFFF";
+                    if (cfg.highlightFillColor == null) cfg.highlightFillColor = "FFFFFF";
+                    if (cfg.slotDelay != null) {
+                        cfg.customSlotDelay = cfg.slotDelay;
+                    } else {
+                        cfg.slotDelay = cfg.customSlotDelay;
                     }
                     return cfg;
                 }
@@ -93,6 +150,7 @@ public class HotbarCyclerConfig {
     }
 
     public void save() {
+        this.slotDelay = this.customSlotDelay;
         try {
             Path path = configPath();
             Files.createDirectories(path.getParent());

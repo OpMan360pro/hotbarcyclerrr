@@ -100,12 +100,14 @@ public abstract class InGameHudMixin {
         int sqR    = hotbarLeft - IND_MARGIN + cfg.rowIndicatorOffsetX;
         int sqL    = sqR - sqW;
         int active = HotbarCyclerClient.getCurrentPage();
+        com.example.hotbarcyclerrr.RowIndicatorStyle style = (cfg != null && cfg.rowIndicatorStyle != null)
+                ? cfg.rowIndicatorStyle : com.example.hotbarcyclerrr.RowIndicatorStyle.DEFAULT;
 
         int[] rowOrder = { 1, 2, 3, 0 };
         for (int i = 0; i < IND_ROWS; i++) {
             int rowId = rowOrder[i];
             int t     = top + i * (sqH + IND_GAP);
-            HotbarCyclerUtil.drawIndicatorCell(ctx, sqL, t, sqW, sqH, rowId == active);
+            HotbarCyclerUtil.drawIndicatorCell(ctx, sqL, t, sqW, sqH, rowId == active, rowId, style);
         }
     }
 }
