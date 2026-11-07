@@ -1,8 +1,8 @@
 package com.example.hotbarcyclerrr;
 
 public enum AntiCheatMode {
-    NONE("None (Instant)", 0, false, false, false, "Instant swap (Default). No anti-cheat adjustments."),
-    CUSTOM("Custom", 50, true, true, true, "User-defined slot delay, sprint, input, and freeze behavior.");
+    NONE("Instant", 0, false, false, false, "Instant swap (Default). Switch to Custom if server rejects rapid clicks."),
+    CUSTOM("Custom Delay", 50, true, true, true, "Adds slot delay and pauses. Helps if the server lags or cancels clicks.");
 
     private final String displayName;
     private final int delayMs;

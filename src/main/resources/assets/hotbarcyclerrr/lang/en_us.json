@@ -4,5 +4,9 @@
   "key.hotbarcyclerrr.prev":                    "Previous Hotbar Row",
   "key.hotbarcyclerrr.open_settings":           "Open Settings",
   "key.hotbarcyclerrr.toggle_row_indicator":    "Toggle Row Indicator",
-  "key.hotbarcyclerrr.return_fixed":            "Return to Fixed Slots"
+  "key.hotbarcyclerrr.return_fixed":            "Return to Fixed Slots",
+  "key.hotbarcyclerrr.row_1":                   "Switch to Row 1 (Hotbar)",
+  "key.hotbarcyclerrr.row_2":                   "Switch to Row 2",
+  "key.hotbarcyclerrr.row_3":                   "Switch to Row 3",
+  "key.hotbarcyclerrr.row_4":                   "Switch to Row 4 (Top)"
 }

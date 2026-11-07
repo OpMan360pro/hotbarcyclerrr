@@ -44,6 +44,10 @@ public class HotbarCyclerClient implements ClientModInitializer {
     private static KeyBinding returnFixedKey;
     private static KeyBinding openSettingsKey;
     private static KeyBinding toggleRowIndicatorKey;
+    private static KeyBinding selectRow1Key;
+    private static KeyBinding selectRow2Key;
+    private static KeyBinding selectRow3Key;
+    private static KeyBinding selectRow4Key;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
     private static int currentPage = 0;
@@ -104,6 +108,10 @@ public class HotbarCyclerClient implements ClientModInitializer {
     public static KeyBinding getNextHotbarKey() { return nextHotbarKey; }
     public static KeyBinding getPrevHotbarKey() { return prevHotbarKey; }
     public static KeyBinding getReturnFixedKey() { return returnFixedKey; }
+    public static KeyBinding getSelectRow1Key() { return selectRow1Key; }
+    public static KeyBinding getSelectRow2Key() { return selectRow2Key; }
+    public static KeyBinding getSelectRow3Key() { return selectRow3Key; }
+    public static KeyBinding getSelectRow4Key() { return selectRow4Key; }
 
     private static int getContainerSlotId(MinecraftClient client, int playerInvIndex) {
         if (client != null && client.player != null && client.player.currentScreenHandler != null) {
@@ -359,6 +367,10 @@ public class HotbarCyclerClient implements ClientModInitializer {
         returnFixedKey        = reg("key.hotbarcyclerrr.return_fixed");
         openSettingsKey       = reg("key.hotbarcyclerrr.open_settings");
         toggleRowIndicatorKey = reg("key.hotbarcyclerrr.toggle_row_indicator");
+        selectRow1Key         = reg("key.hotbarcyclerrr.row_1");
+        selectRow2Key         = reg("key.hotbarcyclerrr.row_2");
+        selectRow3Key         = reg("key.hotbarcyclerrr.row_3");
+        selectRow4Key         = reg("key.hotbarcyclerrr.row_4");
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             currentPage         = 0;
@@ -407,6 +419,18 @@ public class HotbarCyclerClient implements ClientModInitializer {
                     if (currentPage != 0) {
                         revertToFixed();
                     }
+                }
+                while (selectRow1Key.wasPressed()) {
+                    setHotbarRow(0);
+                }
+                while (selectRow2Key.wasPressed()) {
+                    setHotbarRow(3);
+                }
+                while (selectRow3Key.wasPressed()) {
+                    setHotbarRow(2);
+                }
+                while (selectRow4Key.wasPressed()) {
+                    setHotbarRow(1);
                 }
             }
 

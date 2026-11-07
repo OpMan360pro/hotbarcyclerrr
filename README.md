@@ -9,9 +9,10 @@ Based on [Hotbar Cycler](https://github.com/ceaweed/hotbarcycler) by [ceaweed](h
 ## Features
 
 - **Inventory Row Cycling**: Quick-switch between the hotbar and any of the 3 main inventory rows.
+- **Direct Row Switching**: Bind direct keys to instantly switch to rows 1, 2, 3, or 4 (Row 1 bottom to Row 4 top).
 - **HUD Row Indicator**: Visual indicator next to the hotbar showing which row is active. Supports styles (`Default`, `Minimal`, `Dots`, `Accent` with custom color), custom offset, and size.
 - **Inventory Screen Highlight**: Highlight frame and tint over the active row in container and player screens. Fully customizable colors and opacity via RGB sliders with live preview.
-- **Anti-Cheat Settings**: Configurable swap delay, sprint pausing, input blocking, and movement freezing for server compatibility.
+- **Server Compatibility Settings**: Configurable swap delay, sprint pausing, input blocking, and movement freezing to prevent desyncs on strict or lagging servers.
 - **Seamless Hotbar (Optional)**: Smooth visual client-side sync.
 - **Configuration Screen**: In-game settings accessible via ModMenu or dedicated keybinding.
 
@@ -40,6 +41,10 @@ Default category: **Hotbar Cyclerrr** (Options → Controls → Key Binds):
 |---|---|---|
 | **Next Hotbar Row** | Unbound | Cycles to the next inventory row |
 | **Previous Hotbar Row** | Unbound | Cycles to the previous inventory row |
+| **Switch to Row 1 (Hotbar)** | Unbound | Directly switches to Row 1 (bottom / hotbar) |
+| **Switch to Row 2** | Unbound | Directly switches to Row 2 |
+| **Switch to Row 3** | Unbound | Directly switches to Row 3 |
+| **Switch to Row 4 (Top)** | Unbound | Directly switches to Row 4 (top row) |
 | **Return to Fixed Slots** | Unbound | Returns items back to their default fixed layout |
 | **Open Settings** | Unbound | Opens mod configuration screen |
 | **Toggle Row Indicator** | Unbound | Toggles HUD indicator visibility |

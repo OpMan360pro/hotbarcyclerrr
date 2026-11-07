@@ -13,12 +13,12 @@ import java.nio.file.Path;
 public class HotbarCyclerConfig {
 
     // ── Anti-Cheat Compatibility ──────────────────────────────────────────────
-    public AntiCheatMode antiCheatMode         = AntiCheatMode.NONE;
+    public AntiCheatMode antiCheatMode         = AntiCheatMode.CUSTOM;
     public Integer       slotDelay             = null;
-    public int           customSlotDelay       = 50;
-    public boolean       customPauseSprint     = true;
-    public boolean       customBlockInput      = true;
-    public boolean       customFreezeMovement  = true;
+    public int           customSlotDelay       = 0;
+    public boolean       customPauseSprint     = false;
+    public boolean       customBlockInput      = false;
+    public boolean       customFreezeMovement  = false;
 
     // ── Row Indicator ─────────────────────────────────────────────────────────
     public boolean           showRowIndicator    = true;
@@ -81,35 +81,19 @@ public class HotbarCyclerConfig {
     }
 
     public int getEffectiveSlotDelay() {
-        if (antiCheatMode == null) return 0;
-        if (antiCheatMode == AntiCheatMode.CUSTOM) {
-            return Math.max(0, customSlotDelay);
-        }
-        return antiCheatMode.getDelayMs();
+        return Math.max(0, customSlotDelay);
     }
 
     public boolean getEffectivePauseSprint() {
-        if (antiCheatMode == null) return false;
-        if (antiCheatMode == AntiCheatMode.CUSTOM) {
-            return customPauseSprint;
-        }
-        return antiCheatMode.isPauseSprint();
+        return customPauseSprint;
     }
 
     public boolean getEffectiveBlockInput() {
-        if (antiCheatMode == null) return false;
-        if (antiCheatMode == AntiCheatMode.CUSTOM) {
-            return customBlockInput;
-        }
-        return antiCheatMode.isBlockInput();
+        return customBlockInput;
     }
 
     public boolean getEffectiveFreezeMovement() {
-        if (antiCheatMode == null) return false;
-        if (antiCheatMode == AntiCheatMode.CUSTOM) {
-            return customFreezeMovement;
-        }
-        return antiCheatMode.isFreezeMovement();
+        return customFreezeMovement;
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
@@ -128,7 +112,13 @@ public class HotbarCyclerConfig {
             try (Reader r = Files.newBufferedReader(path)) {
                 HotbarCyclerConfig cfg = GSON.fromJson(r, HotbarCyclerConfig.class);
                 if (cfg != null) {
-                    if (cfg.antiCheatMode == null) cfg.antiCheatMode = AntiCheatMode.NONE;
+                    if (cfg.antiCheatMode == AntiCheatMode.NONE && cfg.slotDelay == null) {
+                        cfg.customSlotDelay = 0;
+                        cfg.customPauseSprint = false;
+                        cfg.customBlockInput = false;
+                        cfg.customFreezeMovement = false;
+                    }
+                    cfg.antiCheatMode = AntiCheatMode.CUSTOM;
                     if (cfg.rowIndicatorStyle == null) cfg.rowIndicatorStyle = RowIndicatorStyle.DEFAULT;
                     if (cfg.rowIndicatorAccentColor == null) cfg.rowIndicatorAccentColor = "00AAFF";
                     if (cfg.highlightBorderColor == null) cfg.highlightBorderColor = "FFFFFF";

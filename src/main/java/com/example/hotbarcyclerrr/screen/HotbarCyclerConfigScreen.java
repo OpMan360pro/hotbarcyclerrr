@@ -46,8 +46,8 @@ public class HotbarCyclerConfigScreen extends Screen {
     private final List<ClickableWidget> tab0Widgets = new ArrayList<>();
     private final List<ClickableWidget> tab1Widgets = new ArrayList<>();
 
-    // ── Tab 0 Widgets (Anti-Cheat & Gameplay) ──────────────────────────────────
-    private ButtonWidget    antiCheatBtn, pauseSprintBtn, blockInputBtn, freezeMovementBtn;
+    // ── Tab 0 Widgets (Server Compatibility & Gameplay) ───────────────────────
+    private ButtonWidget    pauseSprintBtn, blockInputBtn, freezeMovementBtn;
     private TextFieldWidget delayField;
     private ButtonWidget    revertToFixedBtn, revertDelayBtn;
 
@@ -63,7 +63,6 @@ public class HotbarCyclerConfigScreen extends Screen {
     private boolean           updatingSliders = false;
 
     // ── Working state ─────────────────────────────────────────────────────────
-    private AntiCheatMode     wMode;
     private boolean           wPauseSprint, wBlockInput, wFreezeMovement;
     private int               wDelay;
     private boolean           wRowShow, wRevertToFixedSlots, wRevertSlotDelay;
@@ -87,11 +86,10 @@ public class HotbarCyclerConfigScreen extends Screen {
 
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
 
-        wMode               = (cfg.antiCheatMode != null) ? cfg.antiCheatMode : AntiCheatMode.NONE;
         wPauseSprint        = cfg.getEffectivePauseSprint();
         wBlockInput         = cfg.getEffectiveBlockInput();
         wFreezeMovement     = cfg.getEffectiveFreezeMovement();
-        wDelay              = (wMode == AntiCheatMode.CUSTOM) ? cfg.customSlotDelay : cfg.getEffectiveSlotDelay();
+        wDelay              = cfg.getEffectiveSlotDelay();
         wRowShow            = com.example.hotbarcyclerrr.HotbarCyclerClient.isRowIndicatorVisible();
         wStyle              = (cfg.rowIndicatorStyle != null) ? cfg.rowIndicatorStyle : RowIndicatorStyle.DEFAULT;
         wRevertToFixedSlots = cfg.revertToFixedSlots;
@@ -105,63 +103,33 @@ public class HotbarCyclerConfigScreen extends Screen {
         int cx = width / 2;
 
         // ── Tab Buttons ───────────────────────────────────────────────────────
-        tabGeneralBtn = addDrawableChild(ButtonWidget.builder(Text.literal("General & Anti-Cheat"), b -> switchTab(0))
+        tabGeneralBtn = addDrawableChild(ButtonWidget.builder(Text.literal("General & Compatibility"), b -> switchTab(0))
                 .dimensions(cx - 154, 18, 150, BTN_H).build());
         tabVisualsBtn = addDrawableChild(ButtonWidget.builder(Text.literal("Visuals & Design"), b -> switchTab(1))
                 .dimensions(cx + 4, 18, 150, BTN_H).build());
 
-        // ── TAB 0: General & Anti-Cheat ───────────────────────────────────────
-        antiCheatBtn = registerTab0(ButtonWidget.builder(antiCheatMsg(wMode), b -> {
-            wMode = wMode.next();
-            if (wMode != AntiCheatMode.CUSTOM) {
-                wPauseSprint    = wMode.isPauseSprint();
-                wBlockInput     = wMode.isBlockInput();
-                wFreezeMovement = wMode.isFreezeMovement();
-                wDelay          = wMode.getDelayMs();
-            } else {
-                wPauseSprint    = cfg.customPauseSprint;
-                wBlockInput     = cfg.customBlockInput;
-                wFreezeMovement = cfg.customFreezeMovement;
-                wDelay          = cfg.customSlotDelay;
-            }
-            b.setMessage(antiCheatMsg(wMode));
-            if (pauseSprintBtn != null) pauseSprintBtn.setMessage(toggleMsg("Pause Sprint", wPauseSprint));
-            if (blockInputBtn != null) blockInputBtn.setMessage(toggleMsg("Block Input", wBlockInput));
-            if (freezeMovementBtn != null) freezeMovementBtn.setMessage(toggleMsg("Freeze Movement", wFreezeMovement));
-            if (delayField != null) delayField.setText(String.valueOf(wDelay));
-        }).dimensions(cx - 154, 54, 308, BTN_H).build());
-
+        // ── TAB 0: General & Compatibility ────────────────────────────────────
         pauseSprintBtn = registerTab0(ButtonWidget.builder(toggleMsg("Pause Sprint", wPauseSprint), b -> {
             wPauseSprint = !wPauseSprint;
-            wMode = AntiCheatMode.CUSTOM;
-            antiCheatBtn.setMessage(antiCheatMsg(wMode));
             b.setMessage(toggleMsg("Pause Sprint", wPauseSprint));
-        }).dimensions(cx - 154, 92, 150, BTN_H).build());
+        }).dimensions(cx - 154, 64, 150, BTN_H).build());
 
         blockInputBtn = registerTab0(ButtonWidget.builder(toggleMsg("Block Input", wBlockInput), b -> {
             wBlockInput = !wBlockInput;
-            wMode = AntiCheatMode.CUSTOM;
-            antiCheatBtn.setMessage(antiCheatMsg(wMode));
             b.setMessage(toggleMsg("Block Input", wBlockInput));
-        }).dimensions(cx + 4, 92, 150, BTN_H).build());
+        }).dimensions(cx + 4, 64, 150, BTN_H).build());
 
         freezeMovementBtn = registerTab0(ButtonWidget.builder(toggleMsg("Freeze Movement", wFreezeMovement), b -> {
             wFreezeMovement = !wFreezeMovement;
-            wMode = AntiCheatMode.CUSTOM;
-            antiCheatBtn.setMessage(antiCheatMsg(wMode));
             b.setMessage(toggleMsg("Freeze Movement", wFreezeMovement));
-        }).dimensions(cx - 154, 116, 150, BTN_H).build());
+        }).dimensions(cx - 154, 90, 150, BTN_H).build());
 
-        delayField = new TextFieldWidget(textRenderer, cx + 78, 116, 40, 18, Text.literal(""));
+        delayField = new TextFieldWidget(textRenderer, cx + 78, 91, 40, 18, Text.literal(""));
         delayField.setText(String.valueOf(wDelay));
         delayField.setMaxLength(5);
         delayField.setTextPredicate(s -> s.matches("\\d{0,5}"));
         delayField.setChangedListener(s -> {
             wDelay = parseInt(delayField, 0);
-            if (wDelay > 0 && wMode != AntiCheatMode.CUSTOM) {
-                wMode = AntiCheatMode.CUSTOM;
-                if (antiCheatBtn != null) antiCheatBtn.setMessage(antiCheatMsg(wMode));
-            }
         });
         registerTab0(delayField);
 
@@ -169,12 +137,12 @@ public class HotbarCyclerConfigScreen extends Screen {
             wRevertToFixedSlots = !wRevertToFixedSlots;
             b.setMessage(toggleMsg("Revert to Fixed Slots", wRevertToFixedSlots));
             if (revertDelayBtn != null) revertDelayBtn.active = wRevertToFixedSlots;
-        }).dimensions(cx - 154, 156, 150, BTN_H).build());
+        }).dimensions(cx - 154, 138, 150, BTN_H).build());
 
         revertDelayBtn = registerTab0(ButtonWidget.builder(toggleMsg("Revert Slot Delay", wRevertSlotDelay), b -> {
             wRevertSlotDelay = !wRevertSlotDelay;
             b.setMessage(toggleMsg("Revert Slot Delay", wRevertSlotDelay));
-        }).dimensions(cx + 4, 156, 150, BTN_H).build());
+        }).dimensions(cx + 4, 138, 150, BTN_H).build());
         revertDelayBtn.active = wRevertToFixedSlots;
 
         // ── TAB 1: Visuals & Design ───────────────────────────────────────────
@@ -260,7 +228,7 @@ public class HotbarCyclerConfigScreen extends Screen {
 
     private void switchTab(int tab) {
         currentTab = tab;
-        tabGeneralBtn.setMessage(Text.literal(currentTab == 0 ? "§e§lGeneral & Anti-Cheat§r" : "General & Anti-Cheat"));
+        tabGeneralBtn.setMessage(Text.literal(currentTab == 0 ? "§e§lGeneral & Compatibility§r" : "General & Compatibility"));
         tabVisualsBtn.setMessage(Text.literal(currentTab == 1 ? "§e§lVisuals & Design§r" : "Visuals & Design"));
         for (ClickableWidget w : tab0Widgets) {
             w.visible = (currentTab == 0);
@@ -398,11 +366,10 @@ public class HotbarCyclerConfigScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
 
         if (currentTab == 0) {
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("-- Anti-Cheat Compatibility --"), cx, 44, C_GOLD);
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("§7" + wMode.getDescription() + "§r"), cx, 78, C_GRAY);
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("Slot Delay:"), cx + 38, 121, C_WHITE);
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("ms"), cx + 128, 121, C_WHITE);
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("-- Fixed Slots Behavior --"), cx, 144, C_GOLD);
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("-- Server Compatibility --"), cx, 48, C_GOLD);
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("Slot Delay:"), cx + 38, 95, C_WHITE);
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("ms"), cx + 128, 95, C_WHITE);
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("-- Fixed Slots Behavior --"), cx, 124, C_GOLD);
         } else {
             ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("-- HUD Row Indicator --"), cx, 42, C_GOLD);
 
@@ -491,7 +458,7 @@ public class HotbarCyclerConfigScreen extends Screen {
     private void saveAndClose() {
         HotbarCyclerConfig cfg = HotbarCyclerConfig.get();
 
-        cfg.antiCheatMode        = wMode;
+        cfg.antiCheatMode        = AntiCheatMode.CUSTOM;
         cfg.customPauseSprint    = wPauseSprint;
         cfg.customBlockInput     = wBlockInput;
         cfg.customFreezeMovement = wFreezeMovement;
@@ -549,11 +516,6 @@ public class HotbarCyclerConfigScreen extends Screen {
         } catch (NumberFormatException e) {
             return fallback;
         }
-    }
-
-    private static Text antiCheatMsg(AntiCheatMode mode) {
-        String color = (mode == AntiCheatMode.NONE) ? "§c" : "§a";
-        return Text.literal("Anti-Cheat: " + color + mode.getDisplayName() + "§r");
     }
 
     private static Text indicatorStyleMsg(RowIndicatorStyle style) {
